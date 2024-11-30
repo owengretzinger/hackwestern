@@ -3,6 +3,7 @@ const OpenAI = require("openai");
 const Instructor = require("@instructor-ai/instructor").default;
 const { z } = require("zod");
 const cors = require("cors");
+const fetch = require("node-fetch");
 require("dotenv").config();
 
 const app = express();
@@ -48,6 +49,42 @@ const GameRoundSchema = z.object({
     .describe("Analysis for all players' drawings"),
 });
 
+async function createSongFromAnalysis(analysisResults) {
+    try {
+        // Combine all identifications and lyrics
+        const combinedStory = analysisResults.drawings
+            .map(d => d.identification)
+            .join(" and ");
+        
+        const allLyrics = analysisResults.drawings
+            .flatMap(d => d.lyrics)
+            .join("\n");
+
+        // Create prompt for song creation
+        const songPrompt = `Create a song that combines these stories:\nStory: ${combinedStory}\nLyrics to incorporate: ${allLyrics}`;
+
+        // Send to song creation service
+        const response = await fetch('https://09be-129-100-255-24.ngrok-free.app/createSong', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                prompt: songPrompt
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to create song');
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error creating song:', error);
+        throw error;
+    }
+}
+
 // Endpoint to analyze drawings
 app.post("/api/analyze-drawings", async (req, res) => {
   try {
@@ -65,26 +102,15 @@ app.post("/api/analyze-drawings", async (req, res) => {
         messages: [
           {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text:
-                  "You are an expert at identifying poorly drawn images and writing song lyrics about them. Take a drawing and:\n" +
-                  "1. Identify what it shows\n" +
-                  "2. Write exactly 4 lines of song lyrics about the drawing.\n" +
-                  "IMPORTANT: Each line MUST be 60 characters or less.\n" +
-                  "Keep lyrics simple and short.",
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: drawing,
-                },
-              },
-            ],
-          },
+            content: "You are an expert at identifying poorly drawn images and writing song lyrics about them. Take this base64 image and:\n" +
+                     "1. Identify what it shows\n" +
+                     "2. Write exactly 4 lines of song lyrics about it.\n" +
+                     "IMPORTANT: Each line MUST be 60 characters or less.\n" +
+                     "Keep lyrics simple and short.\n\n" +
+                     "Here's the base64 image: " + drawing
+          }
         ],
-        model: "gpt-4o-mini",
+        model: "gpt-4",
         response_model: {
           schema: DrawingAnalysisSchema,
           name: "DrawingAnalysis",
@@ -102,7 +128,15 @@ app.post("/api/analyze-drawings", async (req, res) => {
       drawings: allAnalyses,
     };
 
-    res.json(gameRound);
+    // Create song from the analysis
+    const songResult = await createSongFromAnalysis(gameRound);
+
+    // Return both the analysis and the song
+    res.json({
+      analysis: gameRound,
+      song: songResult
+    });
+
   } catch (error) {
     console.error("Error analyzing drawings:", error);
     res.status(500).json({
