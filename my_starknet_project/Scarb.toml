@@ -1,0 +1,8 @@
+[package]
+name = "my_starknet_project"
+version = "0.1.0"
+
+[dependencies]
+starknet = ">=2.8.5"
+
+[[target.starknet-contract]] 
