@@ -1,4 +1,4 @@
-import Whiteboard from "@/components/whiteboard";
+import Whiteboard from "@/components/blocks/whiteboard";
 
 export default function Draw() {
   return (

@@ -1,19 +1,10 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
+import { ThemeProvider } from "next-themes";
+
 import "./globals.css";
 import { SocketProvider } from "@/context/game-state";
-import { Toaster } from 'sonner';
-
-const geistSans = localFont({
-  src: "./fonts/GeistVF.woff",
-  variable: "--font-geist-sans",
-  weight: "100 900",
-});
-const geistMono = localFont({
-  src: "./fonts/GeistMonoVF.woff",
-  variable: "--font-geist-mono",
-  weight: "100 900",
-});
+import { QueryProvider } from "@/providers/query-provider";
+import { ModeToggle } from "@/components/ui/theme-toggle";
 
 export const metadata: Metadata = {
   title: "Symphony Canvas",
@@ -26,14 +17,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased text-black bg-white`}
-      >
-        <SocketProvider>
-          {children}
-          <Toaster />
-        </SocketProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>
+            <SocketProvider>
+              {children}
+              <div className="absolute top-4 right-4">
+                <ModeToggle />
+              </div>
+            </SocketProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
