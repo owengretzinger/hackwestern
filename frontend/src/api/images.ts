@@ -25,12 +25,20 @@ const DrawingAnalysisSchema = z.object({
     .describe("A 4-line song about the drawing"),
 });
 
+// Define schema for genre analysis
+const GenreAnalysisSchema = z.object({
+  genre: z
+    .string()
+    .describe("The most fitting musical genre for these drawings and lyrics"),
+});
+
 // Define the schema for the game round
 const GameRoundSchema = z.object({
   drawings: z
     .array(DrawingAnalysisSchema)
     .min(1)
     .describe("Analysis for all drawings"),
+  genre: z.string().describe("The genre of the song"),
 });
 
 type GameRoundResponse = z.infer<typeof GameRoundSchema>;
@@ -75,8 +83,33 @@ export const submitImageToAI = async (
     })
   );
 
+  // Get genre suggestion based on all analyses
+  const genreAnalysis = await client.chat.completions.create({
+    messages: [
+      {
+        role: "user",
+        content: `Based on these drawings and lyrics, suggest a musical genre that would fit best.:\n${analyses
+          .map(
+            (a) =>
+              `Drawing: ${a.identification}\nLyrics:\n${a.lyrics.join("\n")}`
+          )
+          .join("\n\n")}
+          \n\nIMPORTANT: Make the genre extremely specific, using several words to make it really interesting.`,
+      },
+    ],
+    model: "gpt-4o-mini",
+    response_model: {
+      schema: GenreAnalysisSchema,
+      name: "GenreAnalysis",
+    },
+    max_tokens: 100,
+  });
+
   // Validate the response using GameRoundSchema
-  const gameRound = GameRoundSchema.parse({ drawings: analyses });
+  const gameRound = GameRoundSchema.parse({
+    drawings: analyses,
+    genre: genreAnalysis.genre,
+  });
 
   return gameRound;
 };
