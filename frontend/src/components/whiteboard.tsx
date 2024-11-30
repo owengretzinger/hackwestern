@@ -2,11 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "@/context/socket-context";
-import { useCreateSongFromDrawing } from "@/api/music";
+// import Link from "next/link";
 
 interface Point {
   x: number;
   y: number;
+}
+
+interface Song {
+  lyrics: string;
+  genre: string;
+  url: string;
 }
 
 export default function Whiteboard() {
@@ -14,11 +20,11 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const socket = useSocket();
-  const {
-    mutate: createSongFromDrawing,
-    isPending,
-    error,
-  } = useCreateSongFromDrawing();
+  const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [waitingForOthers, setWaitingForOthers] = useState(false);
+  const [song, setSong] = useState<Song | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -76,8 +82,18 @@ export default function Whiteboard() {
       }
     });
 
+    socket.on("allDrawingsSubmitted", () => {
+      setWaitingForOthers(false);
+    });
+
+    socket.on("displaySong", (songData: Song) => {
+      setSong(songData);
+    });
+
     return () => {
       socket.off("draw");
+      socket.off("allDrawingsSubmitted");
+      socket.off("displaySong");
     };
   }, [socket]);
 
@@ -145,21 +161,21 @@ export default function Whiteboard() {
   const handleSubmit = () => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      console.error("Canvas not found");
+      setSubmitError("Canvas not found");
       return;
     }
 
     try {
-      // Create a temporary canvas to add white background
+      setIsSubmitting(true);
+      setSubmitError(null);
+
       const tempCanvas = document.createElement("canvas");
       tempCanvas.width = canvas.width;
       tempCanvas.height = canvas.height;
       const tempContext = tempCanvas.getContext("2d");
 
-      // Fill with white background
       tempContext!.fillStyle = "white";
       tempContext!.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      // Draw the original canvas content
       tempContext!.drawImage(canvas, 0, 0);
 
       const imageData = tempCanvas.toDataURL("image/png");
@@ -167,50 +183,79 @@ export default function Whiteboard() {
         throw new Error("Failed to convert canvas to image");
       }
 
-      console.log("Creating song from drawing...");
-      createSongFromDrawing([imageData], {
-        onSuccess: () => {
-          console.log("Song created");
-        },
-      });
+      setHasSubmitted(true);
+      setWaitingForOthers(true);
+      socket?.emit("submitDrawing", imageData);
+      setIsSubmitting(false);
     } catch (error) {
-      console.error("Error preparing image:", error);
+      setSubmitError((error as Error).message);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-0 z-10">
-        <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">
-          <button
-            onClick={handleSubmit}
-            disabled={isPending}
-            className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
-          >
-            {isPending ? "Processing..." : "Submit Drawing"}
-          </button>
-          <button
-            onClick={clearCanvas}
-            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            Clear
-          </button>
+      {song ? (
+        <div className="fixed inset-0 z-20 bg-white bg-opacity-90 p-8">
+          <div className="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-2xl font-bold mb-4">Your Song</h2>
+            <p className="text-gray-600 mb-4">Genre: {song.genre}</p>
+            <div className="whitespace-pre-wrap">{song.lyrics}</div>
+            <audio src={song.url} controls className="mt-4" />
+            <p>{song.url}</p>
+            {/* <Link href={song.url} className="block mt-2 text-blue-500">
+              Download Song
+            </Link> */}
+          </div>
         </div>
-      </div>
-      <canvas
-        ref={canvasRef}
-        className="fixed top-0 left-0 w-screen h-screen bg-white"
-        onMouseDown={startDrawing}
-        onTouchStart={startDrawing}
-        onMouseMove={draw}
-        onTouchMove={draw}
-        onMouseUp={stopDrawing}
-        onTouchEnd={stopDrawing}
-        onMouseOut={stopDrawing}
-        onTouchCancel={stopDrawing}
-      />
-      {error && (
-        <p className="text-red-500">Error: {(error as Error).message}</p>
+      ) : (
+        <>
+          <div className="pointer-events-none fixed inset-0 z-10">
+            <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">
+              {waitingForOthers ? (
+                <div className="px-4 py-2 bg-yellow-500 text-white rounded-md">
+                  Waiting for other players...
+                </div>
+              ) : (
+                <button
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || hasSubmitted}
+                  className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:bg-gray-400"
+                >
+                  {isSubmitting
+                    ? "Processing..."
+                    : hasSubmitted
+                    ? "Submitted"
+                    : "Submit Drawing"}
+                </button>
+              )}
+              <button
+                onClick={clearCanvas}
+                disabled={hasSubmitted}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          <canvas
+            ref={canvasRef}
+            className="fixed top-0 left-0 w-screen h-screen bg-white"
+            onMouseDown={startDrawing}
+            onTouchStart={startDrawing}
+            onMouseMove={draw}
+            onTouchMove={draw}
+            onMouseUp={stopDrawing}
+            onTouchEnd={stopDrawing}
+            onMouseOut={stopDrawing}
+            onTouchCancel={stopDrawing}
+          />
+          {submitError && (
+            <p className="fixed bottom-4 right-4 text-red-500 bg-white p-2 rounded shadow">
+              Error: {submitError}
+            </p>
+          )}
+        </>
       )}
     </>
   );
