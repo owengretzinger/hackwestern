@@ -1,9 +1,9 @@
-import Whiteboard from "@/components/whiteboard";
+import Lobby from "@/components/lobby";
 
 export default function Home() {
   return (
     <div className="">
-      <Whiteboard />
+      <Lobby />
     </div>
   );
 }
