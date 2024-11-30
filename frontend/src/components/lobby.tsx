@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { io, Socket } from "socket.io-client";
+import { useSocket } from '@/context/socket-context';
+import { useRouter } from "next/navigation";
 
 interface Player {
   id: string;
@@ -10,7 +11,8 @@ interface Player {
 }
 
 const Lobby = () => {
-  const [socket, setSocket] = useState<Socket | null>(null);
+  const socket = useSocket();
+  const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
@@ -24,25 +26,25 @@ const Lobby = () => {
   }, []);
 
   useEffect(() => {
-    if (!playerId) return;
+    if (!playerId || !socket) return;
 
-    const newSocket = io("http://localhost:3001");
-    setSocket(newSocket);
+    socket.emit("joinLobby", { playerId, nickname });
 
-    newSocket.on("connect", () => {
-      newSocket.emit("joinLobby", { playerId, nickname });
-    });
-
-    newSocket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
+    socket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
       setPlayers(updatedPlayers);
       const isPlayerHost = updatedPlayers[0]?.id === playerId;
       setIsHost(isPlayerHost);
     });
 
+    socket.on("gameStarted", () => {
+      router.push("/draw");
+    });
+
     return () => {
-      newSocket.close();
+      socket.off("lobbyUpdate");
+      socket.off("gameStarted");
     };
-  }, [playerId, nickname]);
+  }, [playerId, nickname, router, socket]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">

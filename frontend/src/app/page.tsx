@@ -1,9 +1,5 @@
-import Lobby from "@/components/lobby";
+import { redirect } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="">
-      <Lobby />
-    </div>
-  );
+  redirect("/lobby");
 }

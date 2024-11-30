@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSocket } from '@/context/socket-context';
 
 interface Point {
   x: number;
@@ -11,6 +12,7 @@ export default function Whiteboard() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
+  const socket = useSocket();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -54,6 +56,25 @@ export default function Whiteboard() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  useEffect(() => {
+    if (!socket) return;
+
+    socket.on('draw', (data: { start: Point; end: Point }) => {
+      const canvas = canvasRef.current;
+      const context = canvas?.getContext("2d");
+      if (context) {
+        context.beginPath();
+        context.moveTo(data.start.x, data.start.y);
+        context.lineTo(data.end.x, data.end.y);
+        context.stroke();
+      }
+    });
+
+    return () => {
+      socket.off('draw');
+    };
+  }, [socket]);
+
   const getCoordinates = (
     event: React.MouseEvent | React.TouchEvent
   ): Point | null => {
@@ -96,6 +117,8 @@ export default function Whiteboard() {
       context.moveTo(lastPoint.x, lastPoint.y);
       context.lineTo(point.x, point.y);
       context.stroke();
+
+      socket?.emit('draw', { start: lastPoint, end: point });
     }
     setLastPoint(point);
   };
@@ -116,10 +139,9 @@ export default function Whiteboard() {
   const handleSubmit = () => {
     const canvas = canvasRef.current;
     if (canvas) {
-      // Get the canvas data as base64 string
       const imageData = canvas.toDataURL("image/png");
-      // You can now send this imageData to your backend or process it as needed
       console.log("Canvas data:", imageData);
+      // You can add navigation here if needed after submission
     }
   };
 
