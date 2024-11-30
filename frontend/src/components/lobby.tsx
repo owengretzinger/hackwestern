@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSocket } from '@/context/socket-context';
+import { useSocket } from "@/context/socket-context";
 import { useRouter } from "next/navigation";
 
 interface Player {
