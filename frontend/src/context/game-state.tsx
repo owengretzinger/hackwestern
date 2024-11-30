@@ -9,8 +9,15 @@ interface Player {
   nickname: string;
 }
 
-interface Song {
+export interface Verse {
   lyrics: string;
+  image: string;
+  author: string;
+}
+
+export interface Song {
+  cover: string;
+  verses: Verse[];
   genre: string;
   url: string;
 }
@@ -28,6 +35,7 @@ interface GameState {
   isLoadingSong: boolean;
   allPlayersSubmitted: boolean;
   hasJoined: boolean;
+  joinError: string | null; // Add this line
 }
 
 interface GameStateContextType {
@@ -35,8 +43,7 @@ interface GameStateContextType {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   updateGameState: (updates: Partial<GameState>) => void;
-  leaveLobby: () => void;
-  joinGame: () => void;
+  joinGame: (nickname: string) => void;
 }
 
 const SocketContext = createContext<GameStateContextType | null>(null);
@@ -56,6 +63,7 @@ const initialGameState: GameState = {
   isLoadingSong: true,
   song: null,
   hasJoined: false,
+  joinError: null, // Add this line
 };
 
 export const useGameState = () => {
@@ -65,8 +73,7 @@ export const useGameState = () => {
   return context;
 };
 
-// Generate player ID and nickname
-const shortId = Math.random().toString(36).substring(2, 7);
+const playerId = Math.random().toString(36).substring(2, 7);
 
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -76,32 +83,30 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setGameState((prev) => ({ ...prev, ...updates }));
   };
 
-  const leaveLobby = () => {
-    if (socket) {
-      socket.emit("leaveLobby", { playerId: gameState.playerId });
-      socket.disconnect();
-      setSocket(null);
-    }
-    setGameState(initialGameState);
-  };
-
-  const joinGame = () => {
-    const playerId = shortId; // Capture this before socket setup
-
-    // Update state first
+  const joinGame = (nickname: string) => {
     updateGameState({
       playerId,
-      nickname: `Player ${playerId}`,
-      hasJoined: true,
-    });
+      nickname,
+    }); // removed hasJoined: true from here
 
     const newSocket = io("http://localhost:3001");
     setSocket(newSocket);
 
-    // Use captured playerId in listeners
+    newSocket.on("connect", () => {
+      newSocket.emit("joinLobby", {
+        playerId,
+        nickname,
+      });
+    });
+
     newSocket.on("joinRejected", (reason: string) => {
-      alert(reason);
-      leaveLobby();
+      console.log("rejected");
+      updateGameState({
+        joinError: reason,
+        hasJoined: false,
+      });
+      newSocket.disconnect();
+      setSocket(null);
     });
 
     newSocket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
@@ -112,6 +117,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       updateGameState({
         players: updatedPlayers,
         isHost: currentPlayer?.isHost || false,
+        hasJoined: true, // Set hasJoined here on successful lobby update
       });
     });
 
@@ -144,7 +150,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         gameState,
         setGameState,
         updateGameState,
-        leaveLobby,
         joinGame,
       }}
     >

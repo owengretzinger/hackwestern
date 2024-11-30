@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useGameState } from "@/context/game-state";
 import { useRouter } from "next/navigation";
 
 const Lobby = () => {
   const { socket, gameState, joinGame } = useGameState();
   const router = useRouter();
-
+  const [nicknameInput, setNicknameInput] = useState("");
+ 
   useEffect(() => {
     if (!gameState.hasJoined || !gameState.playerId || !socket) return;
 
@@ -34,12 +35,32 @@ const Lobby = () => {
   if (!gameState.hasJoined) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <button
-          onClick={joinGame}
-          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors"
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            joinGame(nicknameInput);
+          }}
+          className="bg-white p-6 rounded-lg shadow-lg"
         >
-          Join Game
-        </button>
+          <h1 className="text-2xl font-bold mb-4">Enter your nickname</h1>
+          <input
+            type="text"
+            value={nicknameInput}
+            onChange={(e) => setNicknameInput(e.target.value)}
+            className="w-full mb-4 p-2 border rounded"
+            placeholder="Your nickname"
+            required
+          />
+          <button
+            type="submit"
+            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
+          >
+            Join Game
+          </button>
+          {gameState.joinError && (
+            <p className="text-red-500 mt-2 text-sm text-center">{gameState.joinError}</p>
+          )}
+        </form>
       </div>
     );
   }
@@ -85,7 +106,7 @@ const Lobby = () => {
               Start Game
             </button>
             {gameState.players.length < 2 && (
-              <p className="text-xs text-center pt-2">
+              <p className="text-sm text-center pt-2">
                 Waiting for at least 1 more player
               </p>
             )}

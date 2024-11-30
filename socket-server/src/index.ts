@@ -39,7 +39,10 @@ const GenreAnalysisSchema = z.object({
 });
 
 const GameRoundSchema = z.object({
-  lyrics: z.string(),
+  verses: z.array(z.object({
+    lyrics: z.string(),
+    image: z.string()
+  })),
   genre: z.string(),
   url: z.string(),
 });
@@ -66,25 +69,30 @@ interface Player {
 // Add new interface for drawing submissions
 interface DrawingSubmission {
   playerId: string;
+  nickname: string; // Added this line
   imageData: string;
   lyrics?: string[];
 }
 
 const mockSongData = {
-  lyrics:
-    "[Verse 1]\n" +
-    "A shape so round, what could it be?\n" +
-    "A doodle lost in its own mystery.\n" +
-    "Dreams and laughs in a single line,\n" +
-    "In this simple art, the joy is mine.\n" +
-    "\n" +
-    "[Verse 2]\n" +
-    "A triangle stands in a world so bare,\n" +
-    "Its lines are shaky, yet it doesn't care.\n" +
-    "In simplicity, it finds its form,\n" +
-    "A little off, but still it's warm.",
+  verses: [
+    {
+      lyrics: "A shape so round, what could it be?\n" +
+              "A doodle lost in its own mystery.\n" +
+              "Dreams and laughs in a single line,\n" +
+              "In this simple art, the joy is mine.",
+      image: "" // This would be the base64 image data
+    },
+    {
+      lyrics: "A triangle stands in a world so bare,\n" +
+              "Its lines are shaky, yet it doesn't care.\n" +
+              "In simplicity, it finds its form,\n" +
+              "A little off, but still it's warm.",
+      image: "" // This would be the base64 image data
+    }
+  ],
   genre: "Acoustic Folk Pop with Whimsical Elements and Childlike Imagery",
-  url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3",
+  url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3"
 };
 
 let players: Player[] = [];
@@ -169,9 +177,10 @@ io.on("connection", (socket) => {
       console.log(`Processing drawing from socket ${socket.id}`);
       const player = players.find((p) => p.socketId === socket.id);
       if (player) {
-        // Store the drawing
+        // Store the drawing along with the player's nickname
         drawingSubmissions.push({
           playerId: player.id,
+          nickname: player.nickname, // Added this line
           imageData: imageData,
         });
 
@@ -180,17 +189,29 @@ io.on("connection", (socket) => {
 
         // If all players submitted, process all drawings
         if (players.every((p) => p.hasSubmitted)) {
-          console.log(
-            "All players have submitted their drawings - starting processing"
-          );
+          console.log("All players have submitted their drawings - starting processing");
           io.emit("allDrawingsSubmitted");
-          console.log(
-            "Processing all drawings for lyrics generation in parallel"
-          );
+          console.log("Processing all drawings for lyrics generation in parallel");
+
+          // Use submissions for mock data
+          const mockSongData = {
+            cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+            verses: drawingSubmissions.map((submission, index) => ({
+              author: submission.nickname, // Use player's nickname
+              lyrics: 
+                "Line 1 of verse " + (index + 1) + "\n" +
+                "Line 2 of verse " + (index + 1) + "\n" +
+                "Line 3 of verse " + (index + 1) + "\n" +
+                "Line 4 of verse " + (index + 1),
+              image: submission.imageData,
+            })),
+            genre: "Acoustic Folk Pop with Whimsical Elements",
+            url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3"
+          };
 
           await new Promise((resolve) => setTimeout(resolve, 2000));
           io.emit("displaySong", mockSongData);
-          console.log("Generated mock song");
+          console.log("Generated mock song with", mockSongData.verses.length, "verses");
 
           return;
 
@@ -290,7 +311,11 @@ io.on("connection", (socket) => {
           console.log("Generated song:", songURL);
 
           const songData = GameRoundSchema.parse({
-            lyrics: lyricsString,
+            verses: drawingSubmissions.map(submission => ({
+              author: submission.nickname, // Include the nickname as author
+              lyrics: submission.lyrics?.join('\n') || '',
+              image: submission.imageData
+            })),
             genre: genreAnalysis.genre,
             url: songURL,
           });
