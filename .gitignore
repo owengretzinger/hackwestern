@@ -1,5 +1,19 @@
-.env
+# Dependencies
 node_modules/
+.pnpm-store/
+
+# Build
+.next/
+build/
+dist/
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Misc
 .DS_Store
-**/node_modules/
-**/.env
+*.pem
