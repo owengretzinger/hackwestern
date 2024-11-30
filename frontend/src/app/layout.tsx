@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { SocketProvider } from "@/context/socket-context";
+import { SocketProvider } from "@/context/game-state";
 import { QueryProvider } from "@/providers/query-provider";
 import { Toaster } from 'sonner';
 
@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased text-black`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased text-black bg-white`}
       >
         <QueryProvider>
           <SocketProvider>
