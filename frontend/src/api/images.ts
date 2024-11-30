@@ -1,24 +1,28 @@
 import { useMutation } from "@tanstack/react-query";
 
-interface AIImageResponse {
-  success: boolean;
-  prediction?: string;
-  error?: string;
+interface DrawingAnalysis {
+  identification: string;
+  story: string;
+  lyrics: string[];
+}
+
+interface GameRoundResponse {
+  drawings: DrawingAnalysis[];
 }
 
 export const submitImageToAI = async (
-  imageData: string
-): Promise<AIImageResponse> => {
-  const response = await fetch("YOUR_AI_API_ENDPOINT", {
+  images: string[]
+): Promise<GameRoundResponse> => {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_AI_SERVER_URL}/api/analyze-drawings`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ image: imageData }),
+    body: JSON.stringify({ drawings: images }),
   });
 
   if (!response.ok) {
-    throw new Error("Failed to submit image to AI");
+    throw new Error("Failed to submit images to AI");
   }
 
   return response.json();

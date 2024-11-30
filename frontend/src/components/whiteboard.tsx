@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useSocket } from '@/context/socket-context';
-import { useSubmitImage } from '@/api/images';
-import { toast } from 'sonner';
+import { useSocket } from "@/context/socket-context";
+import { useSubmitImage } from "@/api/images";
 
 interface Point {
   x: number;
@@ -15,7 +14,7 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const socket = useSocket();
-  const submitImage = useSubmitImage();
+  const { mutate: submitImage, isPending, error } = useSubmitImage();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -62,7 +61,7 @@ export default function Whiteboard() {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on('draw', (data: { start: Point; end: Point }) => {
+    socket.on("draw", (data: { start: Point; end: Point }) => {
       const canvas = canvasRef.current;
       const context = canvas?.getContext("2d");
       if (context) {
@@ -74,7 +73,7 @@ export default function Whiteboard() {
     });
 
     return () => {
-      socket.off('draw');
+      socket.off("draw");
     };
   }, [socket]);
 
@@ -121,7 +120,7 @@ export default function Whiteboard() {
       context.lineTo(point.x, point.y);
       context.stroke();
 
-      socket?.emit('draw', { start: lastPoint, end: point });
+      socket?.emit("draw", { start: lastPoint, end: point });
     }
     setLastPoint(point);
   };
@@ -139,23 +138,30 @@ export default function Whiteboard() {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     const canvas = canvasRef.current;
-    if (canvas) {
+    if (!canvas) {
+      console.error("Canvas not found");
+      return;
+    }
+
+    try {
       const imageData = canvas.toDataURL("image/png");
-      try {
-        const result = await submitImage.mutateAsync(imageData);
-        if (result.success && result.prediction) {
-          toast.success('Image submitted successfully!');
-          // Handle the AI prediction here
-          console.log('AI Prediction:', result.prediction);
-        } else {
-          toast.error('Failed to process image');
-        }
-      } catch (error) {
-        toast.error('Failed to submit image');
-        console.error('Error submitting image:', error);
+      if (!imageData) {
+        throw new Error("Failed to convert canvas to image");
       }
+
+      console.log("Submitting images to API...");
+      submitImage([imageData], {
+        onSuccess: (data) => {
+          console.log("API response:", data);
+        },
+        onError: (error) => {
+          console.error("API error:", error);
+        },
+      });
+    } catch (error) {
+      console.error("Error preparing image:", error);
     }
   };
 
@@ -165,9 +171,10 @@ export default function Whiteboard() {
         <div className="pointer-events-auto absolute top-4 right-4 flex gap-2">
           <button
             onClick={handleSubmit}
+            disabled={isPending}
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
           >
-            Submit
+            {isPending ? "Submitting..." : "Submit Drawing"}
           </button>
           <button
             onClick={clearCanvas}
@@ -189,6 +196,9 @@ export default function Whiteboard() {
         onMouseOut={stopDrawing}
         onTouchCancel={stopDrawing}
       />
+      {error && (
+        <p className="text-red-500">Error: {(error as Error).message}</p>
+      )}
     </>
   );
 }
