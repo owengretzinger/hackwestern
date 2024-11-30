@@ -164,11 +164,16 @@ io.on("connection", (socket) => {
         // If all players submitted, process all drawings
         if (players.every((p) => p.hasSubmitted)) {
           console.log(
+            "All players have submitted their drawings - starting processing"
+          );
+          io.emit("allDrawingsSubmitted");
+          console.log(
             "Processing all drawings for lyrics generation in parallel"
           );
 
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           io.emit("displaySong", mockSongData);
-          io.emit("allDrawingsSubmitted");
+          console.log("Generated mock song");
 
           return;
 
