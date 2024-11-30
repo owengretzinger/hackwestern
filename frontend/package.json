@@ -9,16 +9,19 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@instructor-ai/instructor": "^1.5.0",
     "@tanstack/react-query": "^5.62.0",
     "@types/socket.io-client": "^3.0.0",
     "@types/uuid": "^10.0.0",
     "next": "15.0.3",
+    "openai": "^4.73.1",
     "react": "19.0.0-rc-66855b96-20241106",
     "react-dom": "19.0.0-rc-66855b96-20241106",
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.0",
     "uuid": "^11.0.3",
-    "uuidv4": "^6.2.13"
+    "uuidv4": "^6.2.13",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20",

@@ -146,10 +146,32 @@ export default function Whiteboard() {
     }
 
     try {
-      const imageData = canvas.toDataURL("image/png");
+      // Create a temporary canvas to add white background
+      const tempCanvas = document.createElement("canvas");
+      tempCanvas.width = canvas.width;
+      tempCanvas.height = canvas.height;
+      const tempContext = tempCanvas.getContext("2d");
+
+      // Fill with white background
+      tempContext!.fillStyle = "white";
+      tempContext!.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+      // Draw the original canvas content
+      tempContext!.drawImage(canvas, 0, 0);
+
+      const imageData = tempCanvas.toDataURL("image/png");
       if (!imageData) {
         throw new Error("Failed to convert canvas to image");
       }
+
+      // // Download the image
+      // const link = document.createElement("a");
+      // link.download = "drawing.png";
+      // link.href = imageData;
+      // document.body.appendChild(link);
+      // link.click();
+      // document.body.removeChild(link);
+
+      // return;
 
       console.log("Submitting images to API...");
       submitImage([imageData], {
