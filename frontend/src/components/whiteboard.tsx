@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from '@/context/socket-context';
+import { useSubmitImage } from '@/api/images';
+import { toast } from 'sonner';
 
 interface Point {
   x: number;
@@ -13,6 +15,7 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const socket = useSocket();
+  const submitImage = useSubmitImage();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -136,12 +139,23 @@ export default function Whiteboard() {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const canvas = canvasRef.current;
     if (canvas) {
       const imageData = canvas.toDataURL("image/png");
-      console.log("Canvas data:", imageData);
-      // You can add navigation here if needed after submission
+      try {
+        const result = await submitImage.mutateAsync(imageData);
+        if (result.success && result.prediction) {
+          toast.success('Image submitted successfully!');
+          // Handle the AI prediction here
+          console.log('AI Prediction:', result.prediction);
+        } else {
+          toast.error('Failed to process image');
+        }
+      } catch (error) {
+        toast.error('Failed to submit image');
+        console.error('Error submitting image:', error);
+      }
     }
   };
 
