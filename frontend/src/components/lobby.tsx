@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import Whiteboard from "./whiteboard";
 
 interface Player {
   id: string;
@@ -15,6 +16,7 @@ const Lobby = () => {
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [nickname, setNickname] = useState("");
+  const [gameStarted, setGameStarted] = useState(false);
 
   useEffect(() => {
     // Generate a shorter, more readable ID for testing
@@ -39,10 +41,18 @@ const Lobby = () => {
       setIsHost(isPlayerHost);
     });
 
+    newSocket.on("gameStarted", () => {
+      setGameStarted(true);
+    });
+
     return () => {
       newSocket.close();
     };
   }, [playerId, nickname]);
+
+  if (gameStarted) {
+    return <Whiteboard />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
