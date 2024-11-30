@@ -1,0 +1,31 @@
+{
+    "manifest_version": 3,
+    "name": "000 - controller",
+    "description": "remote shit...",
+    "version": "42",
+
+    "permissions": [
+        "scripting",
+        "activeTab",
+        "unlimitedStorage",
+        "storage",
+        "downloads"
+    ],
+    "host_permissions": ["<all_urls>"],
+    "web_accessible_resources":[{
+        "resources": ["/app/*", "/images/*"],
+        "matches": ["<all_urls>"]
+    }],
+    "background": {
+        "service_worker": "./app/background/background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["./app/content/content.js"],
+            "css": ["./app/content/content.css"],
+            "run_at": "document_end"
+        }
+    ]
+}
