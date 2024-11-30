@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useGameState } from "@/context/game-state";
 import { useRouter } from "next/navigation";
+import { WalletConnect } from "./WalletConnect";
+import { connect } from "starknetkit";
 
 const Lobby = () => {
-  const { socket, gameState, joinGame } = useGameState();
   const router = useRouter();
+  const { gameState, socket, joinGame } = useGameState();
   const [nicknameInput, setNicknameInput] = useState("");
- 
+  const [address, setAddress] = useState<string>();
+
   useEffect(() => {
     if (!gameState.hasJoined || !gameState.playerId || !socket) return;
 
@@ -32,53 +35,87 @@ const Lobby = () => {
     socket,
   ]);
 
+  const handleCreateRoom = async () => {
+    if (!address) {
+      const result = await connect();
+      if (result && result.wallet) {
+        setAddress(result.wallet.account.address);
+      } else {
+        return;
+      }
+    }
+    socket?.emit("create_room", { userAddress: address });
+  };
+
+  const handleJoinRoom = async (roomId: string) => {
+    if (!address) {
+      const result = await connect();
+      if (result && result.wallet) {
+        setAddress(result.wallet.account.address);
+      } else {
+        return;
+      }
+    }
+    socket?.emit("join_room", { roomId, userAddress: address });
+    router.push(`/room/${roomId}`);
+  };
+
   if (!gameState.hasJoined) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            joinGame(nicknameInput);
-          }}
-          className="bg-white p-6 rounded-lg shadow-lg"
-        >
-          <h1 className="text-2xl font-bold mb-4">Enter your nickname</h1>
-          <input
-            type="text"
-            value={nicknameInput}
-            onChange={(e) => setNicknameInput(e.target.value)}
-            className="w-full mb-4 p-2 border rounded"
-            placeholder="Your nickname"
-            required
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
-          >
-            Join Game
-          </button>
+      <div className="min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h2 className="mt-6 text-3xl font-bold">Welcome to the Game</h2>
+            <p className="mt-2 text-sm text-gray-600">Connect your wallet to start playing</p>
+          </div>
+
+          <div className="mt-8 space-y-6">
+            <WalletConnect />
+            
+            {address && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  joinGame(nicknameInput);
+                }}
+                className="space-y-4"
+              >
+                <input
+                  type="text"
+                  value={nicknameInput}
+                  onChange={(e) => setNicknameInput(e.target.value)}
+                  className="w-full p-2 border rounded"
+                  placeholder="Your nickname"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                >
+                  Join Game
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateRoom}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Create Room
+                </button>
+              </form>
+            )}
+          </div>
+          
           {gameState.joinError && (
             <p className="text-red-500 mt-2 text-sm text-center">{gameState.joinError}</p>
           )}
-        </form>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <div className="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
-        <h1 className="text-2xl font-bold mb-4">Game Lobby</h1>
-        <div className="mb-4">
-          <p className="text-gray-600">
-            Your ID: {gameState.playerId || "Loading..."}
-          </p>
-          <p className="text-gray-600">Nickname: {gameState.nickname}</p>
-          {gameState.isHost && (
-            <p className="text-green-600 font-semibold">You are the host</p>
-          )}
-        </div>
-
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+      <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full">
         <div className="mb-6">
           <h2 className="text-xl font-semibold mb-2">Players in Lobby:</h2>
           <ul className="space-y-2">
