@@ -73,8 +73,6 @@ export const useGameState = () => {
   return context;
 };
 
-const playerId = Math.random().toString(36).substring(2, 7);
-
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
@@ -84,6 +82,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   const joinGame = (nickname: string) => {
+    const playerId = Math.random().toString(36).substring(2, 7);
     updateGameState({
       playerId,
       nickname,

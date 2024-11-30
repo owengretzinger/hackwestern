@@ -39,10 +39,12 @@ const GenreAnalysisSchema = z.object({
 });
 
 const GameRoundSchema = z.object({
-  verses: z.array(z.object({
-    lyrics: z.string(),
-    image: z.string()
-  })),
+  verses: z.array(
+    z.object({
+      lyrics: z.string(),
+      image: z.string(),
+    })
+  ),
   genre: z.string(),
   url: z.string(),
 });
@@ -53,7 +55,7 @@ app.use(cors());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://172.20.10.5:3000"],
     methods: ["GET", "POST"],
   },
 });
@@ -77,22 +79,24 @@ interface DrawingSubmission {
 const mockSongData = {
   verses: [
     {
-      lyrics: "A shape so round, what could it be?\n" +
-              "A doodle lost in its own mystery.\n" +
-              "Dreams and laughs in a single line,\n" +
-              "In this simple art, the joy is mine.",
-      image: "" // This would be the base64 image data
+      lyrics:
+        "A shape so round, what could it be?\n" +
+        "A doodle lost in its own mystery.\n" +
+        "Dreams and laughs in a single line,\n" +
+        "In this simple art, the joy is mine.",
+      image: "", // This would be the base64 image data
     },
     {
-      lyrics: "A triangle stands in a world so bare,\n" +
-              "Its lines are shaky, yet it doesn't care.\n" +
-              "In simplicity, it finds its form,\n" +
-              "A little off, but still it's warm.",
-      image: "" // This would be the base64 image data
-    }
+      lyrics:
+        "A triangle stands in a world so bare,\n" +
+        "Its lines are shaky, yet it doesn't care.\n" +
+        "In simplicity, it finds its form,\n" +
+        "A little off, but still it's warm.",
+      image: "", // This would be the base64 image data
+    },
   ],
   genre: "Acoustic Folk Pop with Whimsical Elements and Childlike Imagery",
-  url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3"
+  url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3",
 };
 
 let players: Player[] = [];
@@ -111,7 +115,7 @@ io.on("connection", (socket) => {
     }
 
     // Remove the same player if they're already in (handles reconnects)
-    players = players.filter(p => p.id !== playerId);
+    players = players.filter((p) => p.id !== playerId);
 
     const newPlayer: Player = {
       id: playerId,
@@ -121,14 +125,17 @@ io.on("connection", (socket) => {
     };
 
     players.push(newPlayer);
-    
+
     // Re-emit lobby update to ensure all clients have current state
-    io.emit("lobbyUpdate", players.map(p => ({
-      id: p.id,
-      isHost: p.isHost,
-      nickname: p.nickname
-    })));
-    
+    io.emit(
+      "lobbyUpdate",
+      players.map((p) => ({
+        id: p.id,
+        isHost: p.isHost,
+        nickname: p.nickname,
+      }))
+    );
+
     console.log("Player joined:", newPlayer);
     console.log(`Lobby status: ${players.length} players connected`);
     console.log(
@@ -189,29 +196,45 @@ io.on("connection", (socket) => {
 
         // If all players submitted, process all drawings
         if (players.every((p) => p.hasSubmitted)) {
-          console.log("All players have submitted their drawings - starting processing");
+          console.log(
+            "All players have submitted their drawings - starting processing"
+          );
           io.emit("allDrawingsSubmitted");
-          console.log("Processing all drawings for lyrics generation in parallel");
+          console.log(
+            "Processing all drawings for lyrics generation in parallel"
+          );
 
           // Use submissions for mock data
           const mockSongData = {
-            cover: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+            cover:
+              "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
             verses: drawingSubmissions.map((submission, index) => ({
               author: submission.nickname, // Use player's nickname
-              lyrics: 
-                "Line 1 of verse " + (index + 1) + "\n" +
-                "Line 2 of verse " + (index + 1) + "\n" +
-                "Line 3 of verse " + (index + 1) + "\n" +
-                "Line 4 of verse " + (index + 1),
+              lyrics:
+                "Line 1 of verse " +
+                (index + 1) +
+                "\n" +
+                "Line 2 of verse " +
+                (index + 1) +
+                "\n" +
+                "Line 3 of verse " +
+                (index + 1) +
+                "\n" +
+                "Line 4 of verse " +
+                (index + 1),
               image: submission.imageData,
             })),
             genre: "Acoustic Folk Pop with Whimsical Elements",
-            url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3"
+            url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3",
           };
 
           await new Promise((resolve) => setTimeout(resolve, 2000));
           io.emit("displaySong", mockSongData);
-          console.log("Generated mock song with", mockSongData.verses.length, "verses");
+          console.log(
+            "Generated mock song with",
+            mockSongData.verses.length,
+            "verses"
+          );
 
           return;
 
@@ -311,10 +334,10 @@ io.on("connection", (socket) => {
           console.log("Generated song:", songURL);
 
           const songData = GameRoundSchema.parse({
-            verses: drawingSubmissions.map(submission => ({
+            verses: drawingSubmissions.map((submission) => ({
               author: submission.nickname, // Include the nickname as author
-              lyrics: submission.lyrics?.join('\n') || '',
-              image: submission.imageData
+              lyrics: submission.lyrics?.join("\n") || "",
+              image: submission.imageData,
             })),
             genre: genreAnalysis.genre,
             url: songURL,
