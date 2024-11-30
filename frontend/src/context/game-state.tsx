@@ -27,6 +27,7 @@ interface GameState {
   song: Song | null;
   isLoadingSong: boolean;
   allPlayersSubmitted: boolean;
+  hasJoined: boolean;
 }
 
 interface GameStateContextType {
@@ -34,6 +35,8 @@ interface GameStateContextType {
   gameState: GameState;
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   updateGameState: (updates: Partial<GameState>) => void;
+  leaveLobby: () => void;
+  joinGame: () => void;
 }
 
 const SocketContext = createContext<GameStateContextType | null>(null);
@@ -52,6 +55,7 @@ const initialGameState: GameState = {
 
   isLoadingSong: true,
   song: null,
+  hasJoined: false,
 };
 
 export const useGameState = () => {
@@ -72,21 +76,42 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setGameState((prev) => ({ ...prev, ...updates }));
   };
 
-  useEffect(() => {
+  const leaveLobby = () => {
+    if (socket) {
+      socket.emit("leaveLobby", { playerId: gameState.playerId });
+      socket.disconnect();
+      setSocket(null);
+    }
+    setGameState(initialGameState);
+  };
+
+  const joinGame = () => {
+    const playerId = shortId; // Capture this before socket setup
+
+    // Update state first
+    updateGameState({
+      playerId,
+      nickname: `Player ${playerId}`,
+      hasJoined: true,
+    });
+
     const newSocket = io("http://localhost:3001");
     setSocket(newSocket);
 
-    updateGameState({
-      playerId: shortId,
-      nickname: `Player ${shortId}`,
+    // Use captured playerId in listeners
+    newSocket.on("joinRejected", (reason: string) => {
+      alert(reason);
+      leaveLobby();
     });
 
-    // Set up socket event listeners
     newSocket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
-      const isPlayerHost = updatedPlayers[0]?.id === gameState.playerId;
+      const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
+      console.log("my id:", playerId);
+      console.log("lobby update", updatedPlayers);
+      console.log("this player is host", currentPlayer?.isHost);
       updateGameState({
         players: updatedPlayers,
-        isHost: isPlayerHost,
+        isHost: currentPlayer?.isHost || false,
       });
     });
 
@@ -104,15 +129,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         allPlayersSubmitted: true,
       });
     });
+  };
 
+  useEffect(() => {
     return () => {
-      newSocket.close();
+      if (socket) socket.close();
     };
-  }, [gameState.playerId]);
+  }, [socket]);
 
   return (
     <SocketContext.Provider
-      value={{ socket, gameState, setGameState, updateGameState }}
+      value={{
+        socket,
+        gameState,
+        setGameState,
+        updateGameState,
+        leaveLobby,
+        joinGame,
+      }}
     >
       {children}
     </SocketContext.Provider>
