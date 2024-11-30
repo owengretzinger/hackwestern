@@ -1,4 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
 import OpenAI from "openai";
 import Instructor from "@instructor-ai/instructor";
 import { z } from "zod";
@@ -15,14 +14,11 @@ const client = Instructor({
 
 // Define the schema for single drawing analysis
 const DrawingAnalysisSchema = z.object({
-  identification: z
-    .string()
-    .describe("A clear description of what the drawing appears to be"),
   lyrics: z
     .array(z.string().max(80))
     .min(4)
     .max(4)
-    .describe("A 4-line song about the drawing"),
+    .describe("A 4-line verse of a song about the drawing"),
 });
 
 // Define schema for genre analysis
@@ -34,10 +30,7 @@ const GenreAnalysisSchema = z.object({
 
 // Define the schema for the game round
 const GameRoundSchema = z.object({
-  drawings: z
-    .array(DrawingAnalysisSchema)
-    .min(1)
-    .describe("Analysis for all drawings"),
+  lyrics: z.string().describe("The lyrics of the song"),
   genre: z.string().describe("The genre of the song"),
 });
 
@@ -47,7 +40,7 @@ type GameRoundResponse = z.infer<typeof GameRoundSchema>;
 export const submitImageToAI = async (
   images: string[]
 ): Promise<GameRoundResponse> => {
-  const analyses = await Promise.all(
+  const allLyrics = await Promise.all(
     images.map(async (image) => {
       const analysis = await client.chat.completions.create({
         messages: [
@@ -57,9 +50,8 @@ export const submitImageToAI = async (
               {
                 type: "text",
                 text:
-                  "You are an expert at identifying poorly drawn images and writing song lyrics about them. Take a drawing and:\n" +
-                  "1. Identify what it shows\n" +
-                  "2. Write exactly 4 lines of song lyrics about the drawing.\n" +
+                  "You are an expert at identifying poorly drawn images and writing song lyrics about them. " +
+                  "Take a drawing and write exactly 4 lines of song lyrics about the drawing.\n" +
                   "IMPORTANT: Each line MUST be 80 characters or less.\n" +
                   "Keep lyrics simple and short.",
               },
@@ -83,18 +75,19 @@ export const submitImageToAI = async (
     })
   );
 
+  const lyricsString = allLyrics
+    .map((a, index) => `[Verse ${index + 1}]\n${a.lyrics.join("\n")}`)
+    .join("\n\n");
+
   // Get genre suggestion based on all analyses
   const genreAnalysis = await client.chat.completions.create({
     messages: [
       {
         role: "user",
-        content: `Based on these drawings and lyrics, suggest a musical genre that would fit best.:\n${analyses
-          .map(
-            (a) =>
-              `Drawing: ${a.identification}\nLyrics:\n${a.lyrics.join("\n")}`
-          )
-          .join("\n\n")}
-          \n\nIMPORTANT: Make the genre extremely specific, using several words to make it really interesting.`,
+        content:
+          `<lyrics>${lyricsString}</lyrics>\n\n` +
+          "Based on these song lyrics, suggest a musical genre that would fit best.\n" +
+          "IMPORTANT: Make the genre extremely specific, using several words to make it really interesting.",
       },
     ],
     model: "gpt-4o-mini",
@@ -107,16 +100,9 @@ export const submitImageToAI = async (
 
   // Validate the response using GameRoundSchema
   const gameRound = GameRoundSchema.parse({
-    drawings: analyses,
+    lyrics: lyricsString,
     genre: genreAnalysis.genre,
   });
 
   return gameRound;
-};
-
-export const useSubmitImage = () => {
-  return useMutation({
-    mutationKey: ["submit-images"],
-    mutationFn: submitImageToAI,
-  });
 };

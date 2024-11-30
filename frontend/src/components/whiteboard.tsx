@@ -14,7 +14,11 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const socket = useSocket();
-  const { mutate: createSongFromDrawing, isPending, error } = useCreateSongFromDrawing();
+  const {
+    mutate: createSongFromDrawing,
+    isPending,
+    error,
+  } = useCreateSongFromDrawing();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -165,8 +169,8 @@ export default function Whiteboard() {
 
       console.log("Creating song from drawing...");
       createSongFromDrawing([imageData], {
-        onSuccess: (songData) => {
-          console.log("Song created:", songData);
+        onSuccess: () => {
+          console.log("Song created");
         },
       });
     } catch (error) {

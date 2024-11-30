@@ -2,16 +2,12 @@ import { useMutation } from "@tanstack/react-query";
 import { submitImageToAI } from "./images";
 
 export const createSongFromDrawing = async (images: string[]) => {
-  // First analyze the images
-  const analysis = await submitImageToAI(images);
-
-  // Create song prompt from analysis
-  const lyrics = analysis.drawings
-    .map((d, index) => `[Verse ${index + 1}]\n${d.lyrics}`)
-    .join("\n");
-  const genre = analysis.genre;
+  const { lyrics, genre } = await submitImageToAI(images);
 
   console.log(lyrics);
+  console.log("Genre:", genre);
+
+  return { lyrics, genre };
 
   // Create the song
   const response = await fetch(
