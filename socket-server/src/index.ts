@@ -90,12 +90,21 @@ const mockSongData = {
 let players: Player[] = [];
 let songData: any = null;
 let drawingSubmissions: DrawingSubmission[] = [];
+let gameInProgress = false;
 console.log("Server state initialized");
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("joinLobby", ({ playerId, nickname }) => {
+    if (gameInProgress) {
+      socket.emit("joinRejected", "Game is already in progress");
+      return;
+    }
+
+    // Remove the same player if they're already in (handles reconnects)
+    players = players.filter(p => p.id !== playerId);
+
     const newPlayer: Player = {
       id: playerId,
       isHost: players.length === 0, // First player becomes host
@@ -104,7 +113,14 @@ io.on("connection", (socket) => {
     };
 
     players.push(newPlayer);
-    io.emit("lobbyUpdate", players);
+    
+    // Re-emit lobby update to ensure all clients have current state
+    io.emit("lobbyUpdate", players.map(p => ({
+      id: p.id,
+      isHost: p.isHost,
+      nickname: p.nickname
+    })));
+    
     console.log("Player joined:", newPlayer);
     console.log(`Lobby status: ${players.length} players connected`);
     console.log(
@@ -139,6 +155,7 @@ io.on("connection", (socket) => {
     console.log(`Game start requested by ${player?.nickname} (${socket.id})`);
     if (player?.isHost) {
       console.log("Starting new game, resetting game state");
+      gameInProgress = true;
       // Reset submissions when starting new game
       players.forEach((p) => (p.hasSubmitted = false));
       songData = null;
@@ -297,6 +314,9 @@ io.on("connection", (socket) => {
     players = players.filter((p) => p.socketId !== socket.id);
     if (players.length > 0 && !players[0].isHost) {
       players[0].isHost = true; // Make first remaining player the host
+    }
+    if (players.length === 0) {
+      gameInProgress = false;
     }
     io.emit("lobbyUpdate", players);
     console.log(

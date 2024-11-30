@@ -5,15 +5,15 @@ import { useGameState } from "@/context/game-state";
 import { useRouter } from "next/navigation";
 
 const Lobby = () => {
-  const { socket, gameState } = useGameState();
+  const { socket, gameState, joinGame } = useGameState();
   const router = useRouter();
 
   useEffect(() => {
-    if (!gameState.playerId || !socket) return;
+    if (!gameState.hasJoined || !gameState.playerId || !socket) return;
 
-    socket.emit("joinLobby", { 
-      playerId: gameState.playerId, 
-      nickname: gameState.nickname 
+    socket.emit("joinLobby", {
+      playerId: gameState.playerId,
+      nickname: gameState.nickname,
     });
 
     socket.on("gameStarted", () => {
@@ -23,14 +23,35 @@ const Lobby = () => {
     return () => {
       socket.off("gameStarted");
     };
-  }, [gameState.playerId, gameState.nickname, router, socket]);
+  }, [
+    gameState.hasJoined,
+    gameState.playerId,
+    gameState.nickname,
+    router,
+    socket,
+  ]);
+
+  if (!gameState.hasJoined) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <button
+          onClick={joinGame}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition-colors"
+        >
+          Join Game
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-md mx-auto bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-4">Game Lobby</h1>
         <div className="mb-4">
-          <p className="text-gray-600">Your ID: {gameState.playerId || "Loading..."}</p>
+          <p className="text-gray-600">
+            Your ID: {gameState.playerId || "Loading..."}
+          </p>
           <p className="text-gray-600">Nickname: {gameState.nickname}</p>
           {gameState.isHost && (
             <p className="text-green-600 font-semibold">You are the host</p>
@@ -55,13 +76,20 @@ const Lobby = () => {
         </div>
 
         {gameState.isHost && (
-          <button
-            onClick={() => socket?.emit("startGame")}
-            className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors"
-            disabled={gameState.players.length < 2}
-          >
-            Start Game
-          </button>
+          <>
+            <button
+              onClick={() => socket?.emit("startGame")}
+              className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={gameState.players.length < 2}
+            >
+              Start Game
+            </button>
+            {gameState.players.length < 2 && (
+              <p className="text-xs text-center pt-2">
+                Waiting for at least 1 more player
+              </p>
+            )}
+          </>
         )}
       </div>
     </div>
