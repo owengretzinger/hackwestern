@@ -1,102 +1,138 @@
 const express = require('express');
-const OpenAI = require('openai');
-const Instructor = require('@instructor-ai/instructor').default;
-const { z } = require('zod');
-const cors = require('cors');
-require('dotenv').config();
+const http = require('http');
+const { send } = require('process');
+const WebSocket = require('ws');
 
 const app = express();
-const port = process.env.PORT || 3001;
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
 
-// Middleware
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
+const WS_URL = 'ws://localhost:8080'
+const server_ws = new WebSocket(WS_URL)
 
-// Initialize OpenAI with Instructor
-const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
-});
 
-const client = Instructor({
-    client: openai,
-    mode: "FUNCTIONS"
-});
+// Serve static files (if needed)
+app.use(express.static('public'));
+app.use(express.json());
 
-// Define the schema for single drawing analysis
-const DrawingAnalysisSchema = z.object({
-    identification: z.string().describe("A clear description of what the drawing appears to be"),
-    story: z.string().describe("A creative short story about what's happening in the drawing"),
-    lyrics: z.array(z.string()).min(8).max(8).describe("An 8-line song telling the story of the drawing")
-});
+server_ws.onopen = () => {
+    console.log('Server side connect')
+}
 
-// Define schema for all players' drawings
-const GameRoundSchema = z.object({
-    drawings: z.array(DrawingAnalysisSchema).length(4).describe("Analysis for all 4 players' drawings")
-});
+app.post('/createSong', async (req, res) => {
+    const data = req.body
 
-// Endpoint to analyze drawings
-app.post('/api/analyze-drawings', async (req, res) => {
-    try {
-        const { drawings } = req.body; // Expect array of base64 images
-        
-        if (!Array.isArray(drawings) || drawings.length !== 4) {
-            return res.status(400).json({ 
-                error: 'Please provide exactly 4 drawings (one from each player)' 
-            });
+    // const promise = await 
+    
+    res.json(await new Promise(async (resolve) => {
+
+        let loop = setTimeout(() => {
+            resolve({status:false})
+        }, 10000)
+
+        server_ws.onmessage = async (message) => {
+            const data = JSON.parse(message.data)
+
+            if(data.action == 'returnSong'){
+                clearTimeout(loop)
+                resolve({
+                    status: true,
+                    songURL: data.songURL
+                })
+            }
         }
 
-        // Analyze each drawing sequentially
-        const analysisPromises = drawings.map(async (drawing, index) => {
-            const analysis = await client.chat.completions.create({
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            { 
-                                type: "text", 
-                                text: "You are a creative songwriter and storyteller. Look at this drawing and:\n" +
-                                      "1. Identify what it shows\n" +
-                                      "2. Create a brief story about it\n" +
-                                      "3. Write exactly 8 lines of song lyrics that tell this story" 
-                            },
-                            {
-                                type: "image_url",
-                                image_url: {
-                                    url: drawing
-                                }
-                            }
-                        ]
-                    }
-                ],
-                model: "gpt-4-vision-preview",
-                response_model: {
-                    schema: DrawingAnalysisSchema,
-                    name: "DrawingAnalysis"
-                },
-                max_tokens: 1000
-            });
-            return analysis;
-        });
+        server_ws.send(JSON.stringify({
+            action: 'createSong',
+            prompt: data.prompt
+        }))
 
-        // Wait for all analyses to complete
-        const allAnalyses = await Promise.all(analysisPromises);
+    }))
+})
 
-        // Structure the response according to the game round schema
-        const gameRound = {
-            drawings: allAnalyses
-        };
+// Broadcast to all connected clients, except the sender
+function broadcast(ws, message) {
+    wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN) {
+            client.send(message);
+        }
+    });
+}
 
-        res.json(gameRound);
+const sendID = (ws, message, id) => {
+    wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN && id == client.id) {
+            client.send(message);
+        }
+    });
+}
 
-    } catch (error) {
-        console.error('Error analyzing drawings:', error);
-        res.status(500).json({ 
-            error: 'Error analyzing drawings',
-            details: error.message 
-        });
-    }
+// send message only to remote controlled clients
+const broadcastController = (ws, message) => {
+    wss.clients.forEach((client) => {
+        if (client !== ws && client.readyState === WebSocket.OPEN && client.isControlled) {
+            console.log(message)
+            client.send(message);
+        }
+    });
+}
+
+// WebSocket connection handling
+wss.on('connection', (ws) => {
+    // generate unique id for each client
+    ws.id = Math.random().toString(36).substr(2, 9);
+
+    ws.isControlled = false
+    
+    console.log(`Client id: ${ws.id} connected`);
+
+    // Send a welcome message
+    ws.send('Welcome to the WebSocket server! Your id is ' + ws.id);
+
+    
+    ws.on('message', (message) => {
+        // console.log(`Received message: ${message} from client: ${ws.id}`);
+        // Broadcast the message to all clients
+        
+        message = JSON.parse(message)
+        // console.log(message)
+        const action = message.action
+        console.log(action)
+
+        switch(action){
+            case 'role':
+                const role = message.role
+
+                if(role == 'controller'){
+                    ws.isControlled = true
+                    // console.log(ws.isControlled)
+                }
+                break
+            
+            case 'createSong':
+                console.log('creating song...')
+                message.returnID = ws.id
+                broadcastController(ws, JSON.stringify(message))
+                break
+
+            case 'returnSong':
+                console.log(message)
+                sendID(ws, JSON.stringify(message), message.returnID )
+                break;
+        }
+
+        // broadcast(ws, message);
+    });
+
+
+    ws.on('close', () => {
+        console.log(`Client: ${ws.id} disconnected`);
+    });
+
 });
 
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
+// Start the server
+const PORT = process.env.PORT || 8080;
+server.listen(PORT, () => {
+    console.log(`Server is listening on port ${PORT}`);
 });
