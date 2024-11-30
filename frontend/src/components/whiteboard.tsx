@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSocket } from "@/context/socket-context";
-import { useSubmitImage } from "@/api/images";
+import { useCreateSongFromDrawing } from "@/api/music";
 
 interface Point {
   x: number;
@@ -14,7 +14,7 @@ export default function Whiteboard() {
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const socket = useSocket();
-  const { mutate: submitImage, isPending, error } = useSubmitImage();
+  const { mutate: createSongFromDrawing, isPending, error } = useCreateSongFromDrawing();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -163,23 +163,10 @@ export default function Whiteboard() {
         throw new Error("Failed to convert canvas to image");
       }
 
-      // // Download the image
-      // const link = document.createElement("a");
-      // link.download = "drawing.png";
-      // link.href = imageData;
-      // document.body.appendChild(link);
-      // link.click();
-      // document.body.removeChild(link);
-
-      // return;
-
-      console.log("Submitting images to API...");
-      submitImage([imageData], {
-        onSuccess: (data) => {
-          console.log("API response:", data);
-        },
-        onError: (error) => {
-          console.error("API error:", error);
+      console.log("Creating song from drawing...");
+      createSongFromDrawing([imageData], {
+        onSuccess: (songData) => {
+          console.log("Song created:", songData);
         },
       });
     } catch (error) {
@@ -196,7 +183,7 @@ export default function Whiteboard() {
             disabled={isPending}
             className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
           >
-            {isPending ? "Submitting..." : "Submit Drawing"}
+            {isPending ? "Processing..." : "Submit Drawing"}
           </button>
           <button
             onClick={clearCanvas}
