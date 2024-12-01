@@ -71,6 +71,10 @@ export class GameState {
     return this.players.find((p) => p.socketId === socketId);
   }
 
+  findPlayerById(playerId: string): Player | undefined {
+    return this.players.find((p) => p.id === playerId);
+  }
+
   setPlayerSubmitted(socketId: string, submitted: boolean = true): void {
     const player = this.findPlayerBySocketId(socketId);
     if (player) {

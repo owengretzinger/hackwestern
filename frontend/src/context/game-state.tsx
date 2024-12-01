@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"; // Add this import
 interface Player {
   id: string;
   nickname: string;
+  hasSubmitted?: boolean; // Add this property
 }
 
 export interface Verse {
@@ -37,10 +38,11 @@ interface GameState {
   allPlayersSubmitted: boolean;
   hasJoined: boolean;
   joinError: string | null; // Add this line
-  submittedDrawings: Array<{
+  drawings: Array<{
     playerId: string;
     nickname: string;
     imageData: string;
+    submitted: boolean;
   }>;
 }
 
@@ -69,7 +71,7 @@ const initialGameState: GameState = {
   song: null,
   hasJoined: false,
   joinError: null, // Add this line
-  submittedDrawings: [],
+  drawings: [],
 };
 
 export const useGameState = () => {
@@ -202,11 +204,43 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     newSocket.on(
       "drawingSubmitted",
       (drawing: { playerId: string; nickname: string; imageData: string }) => {
-        console.log("drawing submitted", drawing.nickname);
-        setGameState((prev: GameState) => ({
-          ...prev,
-          submittedDrawings: [...prev.submittedDrawings, drawing],
-        }));
+        setGameState((prev: GameState) => {
+          const existingIndex = prev.drawings.findIndex(
+            (d) => d.playerId === drawing.playerId
+          );
+          if (existingIndex !== -1) {
+            const updatedDrawings = [...prev.drawings];
+            updatedDrawings[existingIndex] = { ...drawing, submitted: true };
+            return { ...prev, drawings: updatedDrawings };
+          }
+          return {
+            ...prev,
+            drawings: [...prev.drawings, { ...drawing, submitted: true }],
+          };
+        });
+      }
+    );
+
+    newSocket.on(
+      "drawingUpdate",
+      (drawing: { playerId: string; nickname: string; imageData: string }) => {
+        setGameState((prev: GameState) => {
+          const existingIndex = prev.drawings.findIndex(
+            (d) => d.playerId === drawing.playerId
+          );
+          if (existingIndex !== -1) {
+            const updatedDrawings = [...prev.drawings];
+            updatedDrawings[existingIndex] = {
+              ...drawing,
+              submitted: prev.drawings[existingIndex].submitted,
+            };
+            return { ...prev, drawings: updatedDrawings };
+          }
+          return {
+            ...prev,
+            drawings: [...prev.drawings, { ...drawing, submitted: false }],
+          };
+        });
       }
     );
   };

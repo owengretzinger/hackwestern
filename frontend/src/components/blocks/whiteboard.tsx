@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
 import { useGameState } from "@/context/game-state";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ export default function Whiteboard() {
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const [isEraser, setIsEraser] = useState(false);
   const router = useRouter();
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Add touch event prevention
   useEffect(() => {
@@ -116,6 +118,27 @@ export default function Whiteboard() {
     }
   };
 
+  const sendDrawingUpdate = () => {
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+    }
+
+    updateTimeoutRef.current = setTimeout(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || !gameState.playerId) return;
+
+      try {
+        const imageData = canvas.toDataURL("image/png");
+        socket?.emit("drawingUpdate", {
+          playerId: gameState.playerId,
+          imageData: imageData,
+        });
+      } catch (error) {
+        console.error("Error sending drawing update:", error);
+      }
+    }, 100); // Throttle to max 10 updates per second
+  };
+
   const draw = (e: React.MouseEvent | React.TouchEvent) => {
     if (!isDrawing || !lastPoint) return;
 
@@ -132,7 +155,7 @@ export default function Whiteboard() {
       context.lineTo(point.x, point.y);
       context.stroke();
 
-      socket?.emit("draw", { start: lastPoint, end: point });
+      sendDrawingUpdate(); // Send update immediately after drawing
     }
     setLastPoint(point);
   };
@@ -241,6 +264,15 @@ export default function Whiteboard() {
       });
     }
   };
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <>

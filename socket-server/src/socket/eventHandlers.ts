@@ -245,6 +245,23 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     }
   };
 
+  const handleDrawingUpdate = (
+    socket: Socket,
+    { playerId, imageData }: { playerId: string; imageData: string }
+  ) => {
+    const adminSocketId = gameState.getAdminSocketId();
+    if (adminSocketId) {
+      const player = gameState.findPlayerById(playerId);
+      if (player) {
+        io.to(adminSocketId).emit("drawingUpdate", {
+          playerId: player.id,
+          nickname: player.nickname,
+          imageData: imageData,
+        });
+      }
+    }
+  };
+
   return {
     handleJoinLobby,
     handleDrawingSubmitted,
@@ -253,5 +270,6 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     handleSubmitDrawing,
     handleKickEveryone,
     handleForceSubmit,
+    handleDrawingUpdate,
   };
 };

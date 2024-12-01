@@ -28,6 +28,9 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => eventHandlers.handleDisconnect(socket));
   socket.on("kickEveryone", () => eventHandlers.handleKickEveryone(socket));
   socket.on("forceSubmit", () => eventHandlers.handleForceSubmit(socket));
+  socket.on("drawingUpdate", (data) =>
+    eventHandlers.handleDrawingUpdate(socket, data)
+  );
 });
 
 start();
