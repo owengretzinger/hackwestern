@@ -1,8 +1,10 @@
 // const ENDPOINT = 'http://localhost:8080'
 // const ENDPOINT = 'https://7b94-129-100-255-24.ngrok-free.app/createSong'
 const ENDPOINT = 'https://hackwestern11controller-88dfdd62efd5.herokuapp.com/createSong'
-
+console.log(ENDPOINT)
 const main = async () => {
+
+    const t1 = performance.now()
     const response = await fetch(ENDPOINT, {
         method: 'POST',
         headers: {
@@ -13,8 +15,10 @@ const main = async () => {
             genre: 'hiphop'
         })
     })
+    const t2 = performance.now()
 
     console.log(await response.json())
+    console.log('time taken:', t2 - t1)
 }
 
 main()

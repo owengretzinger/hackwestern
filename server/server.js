@@ -8,19 +8,15 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const WS_URL = 'ws://localhost:8080'
-const server_ws = new WebSocket(WS_URL)
-
+// const WS_URL = 'ws://localhost:8080'
+const WS_URL = 'wss://hackwestern11controller-88dfdd62efd5.herokuapp.com'
 
 // Serve static files (if needed)
 app.use(express.static('public'));
 app.use(express.json());
 app.use(cors());
 
-server_ws.onopen = () => {
-    console.log('Server side connect')
-}
-
+const TIMEOUT_SECONDS = 20
 app.post('/createSong', async (req, res) => {
     const data = req.body
 
@@ -30,25 +26,33 @@ app.post('/createSong', async (req, res) => {
 
         let loop = setTimeout(() => {
             resolve({status:false})
-        }, 10000)
+        }, TIMEOUT_SECONDS * 1000)
 
-        server_ws.onmessage = async (message) => {
-            const data = JSON.parse(message.data)
+        const server_ws = new WebSocket(WS_URL)
+        
+        server_ws.onopen = () => {
+            // console.log('Server side connect')
 
-            if(data.action == 'returnSong'){
-                clearTimeout(loop)
-                resolve({
-                    status: true,
-                    songURL: data.songURL
-                })
+            server_ws.onmessage = async (message) => {
+                const data = JSON.parse(message.data)
+    
+                if(data.action == 'returnSong'){
+                    clearTimeout(loop)
+                    resolve({
+                        status: true,
+                        songURL: data.songURL
+                    })
+                }
             }
+    
+            server_ws.send(JSON.stringify({
+                action: 'createSong',
+                lyrics: data.lyrics,
+                genre: data.genre
+            }))
+
         }
 
-        server_ws.send(JSON.stringify({
-            action: 'createSong',
-            lyrics: data.lyrics,
-            genre: data.genre
-        }))
 
     }))
 })
@@ -121,6 +125,12 @@ wss.on('connection', (ws) => {
                 console.log(message)
                 sendID(ws, JSON.stringify(message), message.returnID )
                 break;
+
+            case 'refresh':
+                break
+            
+            default:
+                break
         }
 
         // broadcast(ws, message);

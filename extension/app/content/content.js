@@ -27,6 +27,7 @@ const main = async () => {
     const wss = new WebSocket(WS_URL)
     console.log(wss)
 
+    let refresh_loop = null
     wss.onopen = async () => {
         console.log('Remote Connected')
 
@@ -36,6 +37,12 @@ const main = async () => {
         }))
 
         updateIndicator(true)
+
+        refresh_loop = setInterval(()=>{
+            console.log('refreshing controller')
+            wss.send(JSON.stringify({action:'refresh'}))
+        }, 8000)
+
     }
 
     wss.onmessage = async (message) => {
@@ -171,6 +178,7 @@ const main = async () => {
     wss.onclose = () => {
         console.log('disconnected')
         updateIndicator(false)
+        clearInterval(refresh_loop)
     }
 
     wss.onerror = () => {
