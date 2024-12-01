@@ -1,44 +1,55 @@
-import { NFTStorage, File } from 'nft.storage';
+import axios from 'axios';
 
-const NFT_STORAGE_KEY = process.env.NEXT_PUBLIC_NFT_STORAGE_KEY;
+const PINATA_JWT = process.env.NEXT_PUBLIC_PINATA_JWT;
 
-if (!NFT_STORAGE_KEY) {
-  throw new Error('NFT_STORAGE_KEY is not defined in environment variables');
+if (!PINATA_JWT) {
+  throw new Error('PINATA_JWT is not defined in environment variables');
 }
 
-const client = new NFTStorage({ token: NFT_STORAGE_KEY });
+async function uploadFileToPinata(file: Blob, name: string) {
+  const formData = new FormData();
+  formData.append('file', file, name);
+
+  const res = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', formData, {
+    headers: {
+      'Authorization': `Bearer ${PINATA_JWT}`,
+      'Content-Type': 'multipart/form-data'
+    },
+    maxBodyLength: Infinity
+  });
+
+  return res.data.IpfsHash;
+}
+
+async function uploadJsonToPinata(json: any) {
+  const res = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', json, {
+    headers: {
+      'Authorization': `Bearer ${PINATA_JWT}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  return res.data.IpfsHash;
+}
 
 export async function uploadToIPFS(audioUrl: string, metadata: any) {
   try {
-    // First, fetch the audio file
+    console.log('Fetching audio file...');
     const audioResponse = await fetch(audioUrl);
     const audioBlob = await audioResponse.blob();
 
-    // Create an audio file with proper name and type
-    const audioFile = new File([audioBlob], 'song.mp3', { type: 'audio/mpeg' });
-
-    // Create a metadata file
-    const metadataFile = new File(
-      [JSON.stringify(metadata, null, 2)],
-      'metadata.json',
-      { type: 'application/json' }
-    );
-
-    // Store files and get IPFS CID (Content Identifier)
-    console.log('Uploading to IPFS...');
-    const audioCid = await client.storeBlob(audioFile);
+    console.log('Uploading audio to IPFS...');
+    const audioCid = await uploadFileToPinata(audioBlob, 'song.mp3');
     console.log('Audio uploaded, CID:', audioCid);
 
     // Update metadata with audio CID
-    metadata.animation_url = `ipfs://${audioCid}`;
-    const updatedMetadataFile = new File(
-      [JSON.stringify(metadata, null, 2)],
-      'metadata.json',
-      { type: 'application/json' }
-    );
+    const metadataWithAudio = {
+      ...metadata,
+      animation_url: `ipfs://${audioCid}`
+    };
 
-    // Store metadata
-    const metadataCid = await client.storeBlob(updatedMetadataFile);
+    console.log('Uploading metadata to IPFS...');
+    const metadataCid = await uploadJsonToPinata(metadataWithAudio);
     console.log('Metadata uploaded, CID:', metadataCid);
 
     return {
@@ -47,6 +58,9 @@ export async function uploadToIPFS(audioUrl: string, metadata: any) {
     };
   } catch (error) {
     console.error('Error uploading to IPFS:', error);
+    if (axios.isAxiosError(error)) {
+      console.error('Pinata API error:', error.response?.data);
+    }
     throw error;
   }
 } 

@@ -2,15 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useGameState } from "@/context/game-state";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { EraserIcon, TrashIcon } from "lucide-react";
 
 interface Point {
   x: number;
   y: number;
-  color: string; // Add color to Point interface
-  isEraser?: boolean; // Add eraser property
+  color: string;
+  isEraser?: boolean;
 }
 
 export default function Whiteboard() {
@@ -20,7 +19,6 @@ export default function Whiteboard() {
   const [currentColor, setCurrentColor] = useState<string>("black");
   const [lastPoint, setLastPoint] = useState<Point | null>(null);
   const [isEraser, setIsEraser] = useState(false);
-  const router = useRouter();
 
   // Add touch event prevention
   useEffect(() => {
@@ -183,7 +181,6 @@ export default function Whiteboard() {
         isSubmittingDrawing: false,
       });
       socket?.emit("submitDrawing", imageData);
-      router.push("/results");
     } catch (error) {
       updateGameState({
         submitError: (error as Error).message,

@@ -1,13 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  webpack: (config) => {
-    config.resolve.fallback = {
-      ...config.resolve.fallback,
-      fs: false,
-    };
-    return config;
-  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn1.suno.ai'
+      },
+      {
+        protocol: 'https',
+        hostname: 'encrypted-tbn0.gstatic.com'
+      }
+    ]
+  }
 };
 
 module.exports = nextConfig; 

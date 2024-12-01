@@ -15,6 +15,7 @@ export function WalletConnect() {
 
   React.useEffect(() => {
     setMounted(true);
+    return () => setMounted(false);
   }, []);
 
   const connectWallet = async () => {

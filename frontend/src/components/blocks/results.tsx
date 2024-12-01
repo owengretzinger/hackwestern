@@ -12,14 +12,14 @@ import {
 } from "../ui/card";
 import { Button } from "../ui/button";
 import { uploadToIPFS } from "@/lib/web3-storage";
-import { deployCollaborativeSongNFT } from "@/lib/deploy-contract";
 import { mintNFT } from "@/lib/contract";
 import React from "react";
+import { toast } from "sonner";
 
 export default function Results() {
   const { gameState } = useGameState();
   const [minting, setMinting] = React.useState(false);
-  const [tokenId, setTokenId] = React.useState<number>();
+  const [mintedTokenId, setMintedTokenId] = React.useState<string>();
 
   const handleMintNFT = async () => {
     if (!gameState.song) return;
@@ -27,14 +27,14 @@ export default function Results() {
     try {
       setMinting(true);
       
-      // Upload to IPFS
-      const { metadataIpfsHash } = await uploadToIPFS(
+      // 1. Upload to IPFS
+      console.log('Uploading to IPFS...');
+      const { metadataIpfsHash, audioIpfsHash } = await uploadToIPFS(
         gameState.song.url,
         {
           name: "Collaborative Song",
           description: "A song created from collaborative drawings",
           image: gameState.song.cover,
-          animation_url: gameState.song.url,
           attributes: {
             genre: gameState.song.genre,
             verses: gameState.song.verses
@@ -42,15 +42,23 @@ export default function Results() {
         }
       );
       
-      // Mint NFT with the IPFS metadata URI
-      const result = await mintNFT(metadataIpfsHash);
+      console.log('Uploaded to IPFS:', { metadataIpfsHash, audioIpfsHash });
+      
+      // 2. Mint NFT with both IPFS URIs
+      console.log('Minting NFT...');
+      const result = await mintNFT(metadataIpfsHash, audioIpfsHash);
+      
       if (result.success) {
-        setTokenId(result.tokenId);
-        // TODO: Show success message
+        console.log('NFT minted successfully:', result);
+        setMintedTokenId(result.tokenId);
+        toast.success('NFT minted successfully!');
+      } else {
+        console.error('Failed to mint NFT:', result.error);
+        toast.error(`Failed to mint NFT: ${result.error}`);
       }
     } catch (error) {
       console.error('Error minting NFT:', error);
-      // TODO: Show error message
+      toast.error(`Error minting NFT: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setMinting(false);
     }
@@ -58,7 +66,7 @@ export default function Results() {
 
   if (gameState.isLoadingSong) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen gap-2  ">
+      <div className="flex flex-col items-center justify-center min-h-screen gap-2">
         <div className="flex gap-2">
           <div className="h-4 animate-bounce [animation-delay:-0.3s]">
             <div className="w-1.5 h-1.5 bg-primary rounded-full"></div>
@@ -109,8 +117,20 @@ export default function Results() {
         disabled={minting}
         className="fixed bottom-4 right-4 shadow-lg"
       >
-        {minting ? 'Minting...' : tokenId ? `Minted #${tokenId}` : 'Mint as NFT'}
+        {minting ? 'Minting...' : mintedTokenId ? `Minted #${mintedTokenId}` : 'Mint as NFT'}
       </Button>
+      {mintedTokenId && (
+        <div className="fixed bottom-4 right-32 flex gap-2">
+          <a 
+            href={`https://hackwestern-d38a7.firebaseapp.com/nft/${mintedTokenId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-500 hover:underline"
+          >
+            View NFT
+          </a>
+        </div>
+      )}
     </>
   );
 }
