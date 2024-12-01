@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useGameState } from "@/context/game-state";
+import { useGameState } from "@/providers/game-state-provider";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -30,7 +30,11 @@ const Lobby = () => {
     });
 
     socket.on("gameStarted", () => {
-      router.push("/draw");
+      if (gameState.isAdmin) {
+        router.push("/admin");
+      } else {
+        router.push("/draw");
+      }
     });
 
     return () => {
@@ -42,6 +46,7 @@ const Lobby = () => {
     gameState.nickname,
     router,
     socket,
+    gameState.isAdmin,
   ]);
 
   return (
@@ -50,9 +55,9 @@ const Lobby = () => {
         <CardHeader>
           <CardTitle>Lobby</CardTitle>
           <CardDescription>
-            {gameState.isHost
+            {gameState.isAdmin
               ? "Start once you're ready!"
-              : "Waiting for the host to start the game..."}
+              : "Waiting for the admin to start the game..."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -66,9 +71,9 @@ const Lobby = () => {
                 <p className="text-sm text-muted-foreground">
                   Nickname: {gameState.nickname}
                 </p>
-                {gameState.isHost && (
+                {gameState.isAdmin && (
                   <p className="text-sm text-green-600 dark:text-green-400 font-semibold">
-                    You are the host
+                    You are the admin
                   </p>
                 )}
               </div>
@@ -85,11 +90,6 @@ const Lobby = () => {
                     <span className="text-sm">
                       {player.nickname || player.id}
                     </span>
-                    {player.isHost && (
-                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold">
-                        Host
-                      </span>
-                    )}
                   </div>
                 ))}
               </div>
@@ -97,7 +97,7 @@ const Lobby = () => {
           </div>
         </CardContent>
 
-        {gameState.isHost && (
+        {gameState.isAdmin && (
           <CardFooter className="flex flex-col gap-2">
             <Button
               onClick={() => socket?.emit("startGame")}

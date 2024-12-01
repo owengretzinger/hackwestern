@@ -26,6 +26,7 @@ io.on("connection", (socket) => {
     eventHandlers.handleSubmitDrawing(socket, imageData)
   );
   socket.on("disconnect", () => eventHandlers.handleDisconnect(socket));
+  socket.on("kickEveryone", () => eventHandlers.handleKickEveryone(socket));
 });
 
 start();

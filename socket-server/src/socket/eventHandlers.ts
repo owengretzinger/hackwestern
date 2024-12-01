@@ -15,6 +15,15 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     { playerId, nickname }: { playerId: string; nickname: string }
   ) => {
     console.log(`Join lobby attempt - Player: ${nickname}, ID: ${playerId}`);
+
+    if (nickname === "7890") {
+      gameState.setAdmin(socket.id);
+      socket.emit("adminJoined");
+      io.emit("lobbyUpdate", gameState.getPlayers());
+      console.log("Admin joined");
+      return;
+    }
+
     if (gameState.isGameInProgress()) {
       console.log(`Join rejected - Game in progress`);
       socket.emit("joinRejected", "Game is already in progress");
@@ -57,13 +66,12 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
 
   const handleStartGame = (socket: Socket) => {
     console.log(`Game start attempted by socket: ${socket.id}`);
-    const player = gameState.findPlayerBySocketId(socket.id);
-    if (player?.isHost) {
-      console.log("Game started by host:", player.nickname);
+    if (gameState.isAdmin(socket.id)) {
+      console.log("Game started by admin");
       gameState.startGame();
       io.emit("gameStarted");
     } else {
-      console.log("Non-host attempted to start game");
+      console.log("Non-admin attempted to start game");
     }
   };
 
@@ -87,6 +95,15 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
         nickname: player.nickname,
         imageData: imageData,
       });
+
+      const adminSocketId = gameState.getAdminSocketId();
+      if (adminSocketId) {
+        io.to(adminSocketId).emit("drawingSubmitted", {
+          playerId: player.id,
+          nickname: player.nickname,
+          imageData: imageData,
+        });
+      }
 
       gameState.setPlayerSubmitted(socket.id);
       socket.emit("drawingProcessed");
@@ -192,11 +209,28 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     }
   };
 
+  const handleKickEveryone = (socket: Socket) => {
+    console.log("handle kick everyone");
+    if (gameState.isAdmin(socket.id)) {
+      console.log("kicking everyone");
+      const players = gameState.getPlayers();
+      players.forEach((player) => {
+        if (!gameState.isAdmin(player.socketId)) {
+          console.log("kicking player", player.nickname);
+          io.to(player.socketId).emit("kicked");
+        }
+      });
+      gameState.removeAllPlayers();
+      io.emit("lobbyUpdate", gameState.getPlayers());
+    }
+  };
+
   return {
     handleJoinLobby,
     handleDrawingSubmitted,
     handleStartGame,
     handleDisconnect,
     handleSubmitDrawing,
+    handleKickEveryone,
   };
 };
