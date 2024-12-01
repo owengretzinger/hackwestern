@@ -96,14 +96,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       "https://b69a-129-100-255-24.ngrok-free.app/",
       // "http://localhost:3001",
       {
-        transports: ["websocket"], // Remove polling to prevent transport switching
+        transports: ["websocket"],
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
-        timeout: 10000, // Add connection timeout
-        withCredentials: true,
-        auth: {
-          token: process.env.NEXT_PUBLIC_SOCKET_TOKEN,
-        },
+        timeout: 20000,
+        forceNew: true,
+        secure: true,
+        rejectUnauthorized: false,
+        autoConnect: true,
       }
     );
 
