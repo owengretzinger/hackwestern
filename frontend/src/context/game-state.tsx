@@ -85,12 +85,13 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
   const joinGame = (nickname: string) => {
     const playerId = Math.random().toString(36).substring(2, 7);
+    console.log("joining game with nickname", nickname);
     updateGameState({
       playerId,
       nickname,
     }); // removed hasJoined: true from here
 
-    const newSocket = io("http://172.20.10.5:3001");
+    const newSocket = io("http://localhost:3001");
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
@@ -126,6 +127,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       updateGameState({
         song: songData,
         isLoadingSong: false,
+      });
+    });
+
+    // Add a listener for the "error" event
+    newSocket.on("error", (errorMessage: string) => {
+      console.error("Server error:", errorMessage);
+      updateGameState({
+        submitError: errorMessage,
+        isSubmittingDrawing: false,
       });
     });
 

@@ -49,6 +49,7 @@ const Menu = () => {
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
+    console.log("Clicked submit");
     joinGame(values.nickname);
   };
 

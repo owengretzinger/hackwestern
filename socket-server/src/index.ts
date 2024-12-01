@@ -25,11 +25,8 @@ const client = Instructor({
 });
 
 const DrawingAnalysisSchema = z.object({
-  lyrics: z
-    .array(z.string().max(80))
-    .min(4)
-    .max(4)
-    .describe("A 4-line verse of a song about the drawing"),
+  description: z.string(),
+  lyrics: z.array(z.string()).min(4).max(4),
 });
 
 const GenreAnalysisSchema = z.object({
@@ -87,6 +84,7 @@ interface DrawingSubmission {
   nickname: string; // Added this line
   imageData: string;
   lyrics?: string[];
+  description?: string;
 }
 
 const mockSongData = {
@@ -262,10 +260,12 @@ io.on("connection", (socket) => {
                     {
                       type: "text",
                       text:
-                        "You are an expert at identifying poorly drawn images and writing song lyrics about them. " +
-                        "Take a drawing and write exactly 4 lines of song lyrics about the drawing.\n" +
-                        "IMPORTANT: Each line MUST be 80 characters or less.\n" +
-                        "Keep lyrics simple and short.",
+                        "You are an expert at identifying poorly drawn images and writing epic song lyrics about them. " +
+                        "First, identify the image and describe it in 3-6 words. " +
+                        "Then, write exactly 4 sick lines of rap lyrics about the drawing." +
+                        "Give the lyrics the 'wow' factor.",
+                      // + "IMPORTANT: Each line MUST be 80 characters or less.\n"
+                      // + "Keep lyrics simple and short.",
                     },
                     {
                       type: "image_url",
@@ -282,16 +282,35 @@ io.on("connection", (socket) => {
               max_tokens: 1000,
             });
             submission.lyrics = analysis.lyrics;
+            submission.description = analysis.description; // Ensure description is set
+
             console.log("Generated lyrics:", analysis.lyrics);
             return submission;
           };
 
           // Process all drawings in parallel
           await Promise.all(drawingSubmissions.map(generateLyrics));
+          console.log("All lyrics generated");
 
           console.log("Getting genre for combined lyrics");
           // Combine all lyrics with verse numbers
-          const allLyrics = drawingSubmissions
+          const lyricsString = drawingSubmissions
+            .map((submission) => submission.lyrics?.join("\n"))
+            .join("\n\n");
+
+          const descriptions = drawingSubmissions
+            .map((submission) => submission.description)
+            .join(", ");
+
+          console.log("descriptions", descriptions);
+          console.log(
+            "image prompt:",
+            `<descriptions>${descriptions}</descriptions>\n\n` +
+              "Based on these descriptions of pictures that were drawn, create album cover art." +
+              "IMPORTANT: Base the cover art on a couple of the descriptions."
+          );
+
+          const lyricsStringWithVerseText = drawingSubmissions
             .map((submission, index) =>
               submission.lyrics
                 ? `[Verse ${index + 1}]\n${submission.lyrics.join("\n")}`
@@ -299,44 +318,45 @@ io.on("connection", (socket) => {
             )
             .filter(Boolean)
             .join("\n\n");
-          const lyricsString = allLyrics;
 
           // Run genre analysis and image generation in parallel
-          const [genreAnalysis, imageResponse] = await Promise.all([
-            client.chat.completions.create({
-              messages: [
-                {
-                  role: "user",
-                  content:
-                    `<lyrics>${lyricsString}</lyrics>\n\n` +
-                    "Based on these song lyrics, suggest two versions of a musical genre that would fit best:\n" +
-                    "1. A detailed, specific genre using several descriptive words\n" +
-                    "2. A short, concise 1-3 word version of the same genre\n" +
-                    "Also provide a creative title for the song.",
-                },
-              ],
-              model: "gpt-4o-mini",
-              response_model: {
-                schema: GenreAnalysisSchema,
-                name: "GenreAnalysis",
-              },
-              max_tokens: 150,
-            }),
-            openai.images.generate({
-              model: "dall-e-2",
-              prompt:
-                `<lyrics>${lyricsString}</lyrics>\n\n` +
-                "Based on these song lyrics, create album cover art.",
-              n: 1,
-              size: "512x512",
-            }),
-          ]);
+          const imageResponse = openai.images.generate({
+            model: "dall-e-3",
+            prompt:
+              `<descriptions>${descriptions}</descriptions>\n\n` +
+              "Based on these descriptions of pictures that were drawn, create album cover art." +
+              "IMPORTANT: Base the cover art on a couple of the descriptions.",
+            n: 1,
+            size: "1024x1024",
+          });
+          console.log("started image generation");
 
+          console.log("Generating genre analysis");
+          const genreAnalysis = await client.chat.completions.create({
+            messages: [
+              {
+                role: "user",
+                content:
+                  `<lyrics>${lyricsString}</lyrics>\n\n` +
+                  "Based on these song lyrics, suggest two versions of a musical genre that would fit best:\n" +
+                  "1. A detailed, specific genre using several descriptive words\n" +
+                  "2. A short, concise 1-3 word version of the same genre\n" +
+                  "IMPORTANT: the genre should be a sub-genre rap. " +
+                  "Not whimsical or folk or children's music or quirky.\n" +
+                  "IMPORTANT: Also provide a title for the song based on the lyrics.",
+              },
+            ],
+            model: "gpt-4o-mini",
+            response_model: {
+              schema: GenreAnalysisSchema,
+              name: "GenreAnalysis",
+            },
+            max_tokens: 150,
+          });
           console.log("Generated genre:", genreAnalysis.genre);
-          const coverImageUrl = imageResponse.data[0].url;
-          console.log("Generated cover art:", coverImageUrl);
 
           // Generate song
+          console.log("Generating song");
           const response = await fetch(`${process.env.NGROK_URL}/createSong`, {
             method: "POST",
             headers: {
@@ -361,23 +381,33 @@ io.on("connection", (socket) => {
           }
 
           const songURL = song.songURL;
-
           // const songURL = mockSongData.url;
 
           console.log("Generated song:", songURL);
 
-          const songData = GameRoundSchema.parse({
-            cover: coverImageUrl, // Use the DALL-E generated image as cover
-            verses: drawingSubmissions.map((submission) => ({
-              author: submission.nickname, // Include the nickname as author
-              lyrics: submission.lyrics?.join("\n") || "",
-              image: submission.imageData,
-            })),
-            genre: genreAnalysis.genre,
-            shortGenre: genreAnalysis.shortGenre,
-            title: genreAnalysis.title,
-            url: songURL,
-          });
+          const coverImageUrl = (await imageResponse).data[0].url;
+          console.log("Generated cover art:", coverImageUrl);
+
+          console.log("Parsing song data");
+          let songData;
+          try {
+            songData = GameRoundSchema.parse({
+              cover: coverImageUrl,
+              verses: drawingSubmissions.map((submission) => ({
+                author: submission.nickname,
+                lyrics: submission.lyrics?.join("\n") || "",
+                image: submission.imageData,
+              })),
+              genre: genreAnalysis.genre,
+              shortGenre: genreAnalysis.shortGenre,
+              title: genreAnalysis.title,
+              url: songURL,
+            });
+          } catch (error) {
+            console.error("Error validating song data:", error);
+            socket.emit("error", "Failed to validate song data");
+            return;
+          }
 
           console.log("Final song data:", songData);
           io.emit("displaySong", songData);

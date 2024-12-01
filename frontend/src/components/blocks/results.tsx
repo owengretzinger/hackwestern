@@ -23,7 +23,7 @@ import { Slider } from "../ui/slider";
 export default function Results() {
   const { gameState } = useGameState();
 
-  if (gameState.isLoadingSong) {
+  if (gameState.isLoadingSong && !gameState.submitError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-2  ">
         <div className="flex gap-2">
@@ -46,7 +46,7 @@ export default function Results() {
     );
   }
 
-  if (!gameState.song) {
+  if (gameState.submitError || !gameState.song) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center gap-2 text-destructive">
@@ -132,13 +132,16 @@ const Audio = ({ src }: { src: string }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    setIsPlayable(!!(audioRef.current && audioRef.current.duration > 0));
-
     const interval = setInterval(() => {
+      const shouldEnable =
+        (audioRef.current && audioRef.current.duration > 0) || false;
+      console.log("Can enable audio:", shouldEnable);
+      setIsPlayable(shouldEnable);
+
       if (!isPlayable) {
         setKey((prev) => prev + 1);
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
   }, [audioRef.current?.duration, isPlayable]);
