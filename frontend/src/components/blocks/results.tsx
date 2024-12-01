@@ -8,13 +8,7 @@ import {
   TriangleAlertIcon,
 } from "lucide-react";
 import Image from "next/image";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardDescription, CardTitle } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../ui/button";
@@ -84,7 +78,7 @@ const SongCard = ({ song }: { song: Song }) => {
           alt="Generated song image"
           width={512}
           height={512}
-          className="object-contain rounded-lg min-w-full h-full"
+          className="object-contain rounded-lg w-full max-h-full aspect-square"
         />
       </div>
       <div className="w-full flex flex-col">

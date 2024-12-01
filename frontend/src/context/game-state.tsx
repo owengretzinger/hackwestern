@@ -91,7 +91,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       nickname,
     }); // removed hasJoined: true from here
 
-    const newSocket = io("http://localhost:3001");
+    const newSocket = io("https://hackwestern11main-91370a9c09b3.herokuapp.com/");
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
@@ -132,7 +132,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     // Add a listener for the "error" event
     newSocket.on("error", (errorMessage: string) => {
-      console.error("Server error:", errorMessage);
+      console.log("Server error:", errorMessage);
       updateGameState({
         submitError: errorMessage,
         isSubmittingDrawing: false,
