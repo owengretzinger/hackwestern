@@ -35,17 +35,30 @@ const DrawingAnalysisSchema = z.object({
 const GenreAnalysisSchema = z.object({
   genre: z
     .string()
-    .describe("The most fitting musical genre for these drawings and lyrics"),
+    .describe(
+      "A detailed, specific musical genre description using several words"
+    ),
+  shortGenre: z
+    .string()
+    .max(20)
+    .describe("A short, 1-2 word version of the genre"),
+  title: z
+    .string()
+    .describe("A creative and relevant title for the song based on the lyrics"),
 });
 
 const GameRoundSchema = z.object({
+  cover: z.string(),
   verses: z.array(
     z.object({
+      author: z.string(),
       lyrics: z.string(),
       image: z.string(),
     })
   ),
   genre: z.string(),
+  shortGenre: z.string(),
+  title: z.string(),
   url: z.string(),
 });
 
@@ -55,7 +68,7 @@ app.use(cors());
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:3000", "http://172.20.10.5:3000"],
+    origin: ["http://172.20.10.5:3000", "http://localhost:3000"],
     methods: ["GET", "POST"],
   },
 });
@@ -204,39 +217,39 @@ io.on("connection", (socket) => {
             "Processing all drawings for lyrics generation in parallel"
           );
 
-          // Use submissions for mock data
-          const mockSongData = {
-            cover:
-              "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
-            verses: drawingSubmissions.map((submission, index) => ({
-              author: submission.nickname, // Use player's nickname
-              lyrics:
-                "Line 1 of verse " +
-                (index + 1) +
-                "\n" +
-                "Line 2 of verse " +
-                (index + 1) +
-                "\n" +
-                "Line 3 of verse " +
-                (index + 1) +
-                "\n" +
-                "Line 4 of verse " +
-                (index + 1),
-              image: submission.imageData,
-            })),
-            genre: "Acoustic Folk Pop with Whimsical Elements",
-            url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3",
-          };
+          // // Use submissions for mock data
+          // const mockSongData = {
+          //   cover:
+          //     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+          //   verses: drawingSubmissions.map((submission, index) => ({
+          //     author: submission.nickname, // Use player's nickname
+          //     lyrics:
+          //       "Line 1 of verse " +
+          //       (index + 1) +
+          //       "\n" +
+          //       "Line 2 of verse " +
+          //       (index + 1) +
+          //       "\n" +
+          //       "Line 3 of verse " +
+          //       (index + 1) +
+          //       "\n" +
+          //       "Line 4 of verse " +
+          //       (index + 1),
+          //     image: submission.imageData,
+          //   })),
+          //   genre: "Acoustic Folk Pop with Whimsical Elements",
+          //   url: "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3",
+          // };
 
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-          io.emit("displaySong", mockSongData);
-          console.log(
-            "Generated mock song with",
-            mockSongData.verses.length,
-            "verses"
-          );
+          // await new Promise((resolve) => setTimeout(resolve, 2000));
+          // io.emit("displaySong", mockSongData);
+          // console.log(
+          //   "Generated mock song with",
+          //   mockSongData.verses.length,
+          //   "verses"
+          // );
 
-          return;
+          // return;
 
           // Helper function to generate lyrics for a single drawing
           const generateLyrics = async (submission: DrawingSubmission) => {
@@ -288,26 +301,40 @@ io.on("connection", (socket) => {
             .join("\n\n");
           const lyricsString = allLyrics;
 
-          // Get genre for combined lyrics
-          const genreAnalysis = await client.chat.completions.create({
-            messages: [
-              {
-                role: "user",
-                content:
-                  `<lyrics>${lyricsString}</lyrics>\n\n` +
-                  "Based on these song lyrics, suggest a musical genre that would fit best.\n" +
-                  "IMPORTANT: Make the genre extremely specific, using several words to make it really interesting.",
+          // Run genre analysis and image generation in parallel
+          const [genreAnalysis, imageResponse] = await Promise.all([
+            client.chat.completions.create({
+              messages: [
+                {
+                  role: "user",
+                  content:
+                    `<lyrics>${lyricsString}</lyrics>\n\n` +
+                    "Based on these song lyrics, suggest two versions of a musical genre that would fit best:\n" +
+                    "1. A detailed, specific genre using several descriptive words\n" +
+                    "2. A short, concise 1-3 word version of the same genre\n" +
+                    "Also provide a creative title for the song.",
+                },
+              ],
+              model: "gpt-4o-mini",
+              response_model: {
+                schema: GenreAnalysisSchema,
+                name: "GenreAnalysis",
               },
-            ],
-            model: "gpt-4o-mini",
-            response_model: {
-              schema: GenreAnalysisSchema,
-              name: "GenreAnalysis",
-            },
-            max_tokens: 100,
-          });
+              max_tokens: 150,
+            }),
+            openai.images.generate({
+              model: "dall-e-2",
+              prompt:
+                `<lyrics>${lyricsString}</lyrics>\n\n` +
+                "Based on these song lyrics, create album cover art.",
+              n: 1,
+              size: "512x512",
+            }),
+          ]);
 
           console.log("Generated genre:", genreAnalysis.genre);
+          const coverImageUrl = imageResponse.data[0].url;
+          console.log("Generated cover art:", coverImageUrl);
 
           // Generate song
           const response = await fetch(`${process.env.NGROK_URL}/createSong`, {
@@ -315,11 +342,15 @@ io.on("connection", (socket) => {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ prompt: lyricsString }),
+            body: JSON.stringify({
+              lyrics: lyricsString,
+              genre: genreAnalysis.genre,
+            }),
           });
 
           if (!response.ok) {
-            throw new Error("Failed to create song");
+            socket.emit("error", "Failed to create song");
+            console.error("Failed to create song, response not ok");
           }
 
           const song = await response.json();
@@ -331,15 +362,20 @@ io.on("connection", (socket) => {
 
           const songURL = song.songURL;
 
+          // const songURL = mockSongData.url;
+
           console.log("Generated song:", songURL);
 
           const songData = GameRoundSchema.parse({
+            cover: coverImageUrl, // Use the DALL-E generated image as cover
             verses: drawingSubmissions.map((submission) => ({
               author: submission.nickname, // Include the nickname as author
               lyrics: submission.lyrics?.join("\n") || "",
               image: submission.imageData,
             })),
             genre: genreAnalysis.genre,
+            shortGenre: genreAnalysis.shortGenre,
+            title: genreAnalysis.title,
             url: songURL,
           });
 

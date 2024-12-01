@@ -163,17 +163,67 @@ export default function Whiteboard() {
         submitError: null,
       });
 
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("Failed to get canvas context");
+
+      // Get image data
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      let minX = canvas.width,
+        minY = canvas.height,
+        maxX = 0,
+        maxY = 0;
+      for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+          const index = (y * canvas.width + x) * 4;
+          const alpha = data[index + 3];
+          if (alpha !== 0) {
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+      }
+
+      if (minX > maxX || minY > maxY) {
+        throw new Error("No drawing found on canvas");
+      }
+
+      const margin = 50;
+
+      minX = Math.max(0, minX - margin);
+      minY = Math.max(0, minY - margin);
+      maxX = Math.min(canvas.width, maxX + margin);
+      maxY = Math.min(canvas.height, maxY + margin);
+
+      const width = maxX - minX;
+      const height = maxY - minY;
+
       const tempCanvas = document.createElement("canvas");
-      tempCanvas.width = canvas.width;
-      tempCanvas.height = canvas.height;
+      tempCanvas.width = width;
+      tempCanvas.height = height;
       const tempContext = tempCanvas.getContext("2d");
+      if (!tempContext) throw new Error("Failed to get temp canvas context");
 
-      tempContext!.fillStyle = "white";
-      tempContext!.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-      tempContext!.drawImage(canvas, 0, 0);
+      tempContext.fillStyle = "white"; // Ensure white background
+      tempContext.fillRect(0, 0, width, height);
 
-      const imageData = tempCanvas.toDataURL("image/png");
-      if (!imageData) {
+      tempContext.drawImage(
+        canvas,
+        minX,
+        minY,
+        width,
+        height,
+        0,
+        0,
+        width,
+        height
+      );
+
+      const croppedImageData = tempCanvas.toDataURL("image/png");
+      if (!croppedImageData) {
         throw new Error("Failed to convert canvas to image");
       }
 
@@ -182,7 +232,7 @@ export default function Whiteboard() {
         waitingForOthersToSubmit: true,
         isSubmittingDrawing: false,
       });
-      socket?.emit("submitDrawing", imageData);
+      socket?.emit("submitDrawing", croppedImageData);
       router.push("/results");
     } catch (error) {
       updateGameState({

@@ -16,9 +16,11 @@ export interface Verse {
 }
 
 export interface Song {
+  title: string;
   cover: string;
   verses: Verse[];
   genre: string;
+  shortGenre: string;
   url: string;
 }
 
@@ -88,7 +90,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       nickname,
     }); // removed hasJoined: true from here
 
-    const newSocket = io("http://localhost:3001");
+    const newSocket = io("http://172.20.10.5:3001");
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
