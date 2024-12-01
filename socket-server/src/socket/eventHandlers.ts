@@ -14,7 +14,9 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     socket: Socket,
     { playerId, nickname }: { playerId: string; nickname: string }
   ) => {
+    console.log(`Join lobby attempt - Player: ${nickname}, ID: ${playerId}`);
     if (gameState.isGameInProgress()) {
+      console.log(`Join rejected - Game in progress`);
       socket.emit("joinRejected", "Game is already in progress");
       return;
     }
@@ -54,10 +56,14 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
   };
 
   const handleStartGame = (socket: Socket) => {
+    console.log(`Game start attempted by socket: ${socket.id}`);
     const player = gameState.findPlayerBySocketId(socket.id);
     if (player?.isHost) {
+      console.log("Game started by host:", player.nickname);
       gameState.startGame();
       io.emit("gameStarted");
+    } else {
+      console.log("Non-host attempted to start game");
     }
   };
 
@@ -69,8 +75,12 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
 
   const handleSubmitDrawing = async (socket: Socket, imageData: string) => {
     try {
+      console.log(`Drawing submission received from socket: ${socket.id}`);
       const player = gameState.findPlayerBySocketId(socket.id);
-      if (!player) return;
+      if (!player) {
+        console.log("Drawing submission rejected - player not found");
+        return;
+      }
 
       gameState.addDrawingSubmission({
         playerId: player.id,
@@ -81,11 +91,20 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       gameState.setPlayerSubmitted(socket.id);
       socket.emit("drawingProcessed");
 
-      if (!gameState.getPlayers().every((p) => p.hasSubmitted)) return;
+      if (!gameState.getPlayers().every((p) => p.hasSubmitted)) {
+        console.log(
+          `Waiting for ${
+            gameState.getPlayers().filter((p) => !p.hasSubmitted).length
+          } more submissions`
+        );
+        return;
+      }
 
+      console.log("All drawings submitted, starting AI generation...");
       io.emit("allDrawingsSubmitted");
 
       // Process drawings
+      console.log("Generating descriptions and lyrics...");
       await Promise.all(
         gameState.getDrawingSubmissions().map(async (submission) => {
           const analysis = await generateDescriptionsAndLyrics(submission);
@@ -104,7 +123,10 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
         .map((submission) => submission.description)
         .join(", ");
 
-      // Don't await so it doesn't block other things. We don't need it until later.
+      console.log("Descriptions:", descriptions);
+      console.log("Lyrics:", lyricsString);
+
+      console.log("Starting cover art generation...");
       const imageResponse = generateCoverArt(descriptions);
       // const imageResponse = Promise.resolve({
       //   data: [
@@ -114,12 +136,21 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       //   ],
       // });
 
+      console.log("Generating title and genre...");
       const { title, genre, shortGenre } = await generateTitleAndGenre(
         lyricsString
       );
 
+      console.log("Generating song...");
       // const songURL = "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
       const songURL = await generateSong(lyricsString, genre);
+
+      console.log("Song generation complete:", {
+        title,
+        genre,
+        shortGenre,
+        songURL,
+      });
 
       const coverImageUrl = (await imageResponse).data[0].url;
 
@@ -137,6 +168,17 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
           url: songURL,
         });
 
+        // console log song data other than image data
+        const songDataNoImage = {
+          ...songData,
+          cover: "image data",
+          verses: songData.verses.map((verse) => ({
+            ...verse,
+            image: "image data",
+          })),
+        };
+        console.log("Song data:", songDataNoImage);
+
         io.emit("displaySong", songData);
       } catch (error) {
         console.error("Error validating song data:", error);
@@ -144,6 +186,7 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       }
     } catch (error) {
       console.error("Error processing drawing:", error);
+      console.error("Stack trace:", error instanceof Error ? error.stack : "");
       socket.emit("error", "Failed to process drawing");
     }
   };

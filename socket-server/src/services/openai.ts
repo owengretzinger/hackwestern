@@ -62,10 +62,10 @@ export const generateTitleAndGenre = async (lyricsString: string) => {
         role: "user",
         content:
           `<lyrics>${lyricsString}</lyrics>\n\n` +
-          "Based on these song lyrics, suggest two versions of a musical genre that would fit best:\n" +
+          "Based on these song lyrics, suggest two versions of a hip-hop genre that would fit best:\n" +
           "1. A detailed, specific genre using several descriptive words\n" +
           "2. A short, concise 1-3 word version of the same genre\n" +
-          "IMPORTANT: the genre should be a sub-genre rap. " +
+          "IMPORTANT: the genre should be a sub-genre of hip-hop. " +
           "Not whimsical or folk or children's music or quirky.\n" +
           "IMPORTANT: Also provide a title for the song based on the lyrics.",
       },
