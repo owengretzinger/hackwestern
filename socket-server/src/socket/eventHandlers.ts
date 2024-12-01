@@ -32,7 +32,6 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
 
     const newPlayer: Player = {
       id: playerId,
-      isHost: false, // Initial value, will be set in addPlayer
       nickname,
       socketId: socket.id,
     };
@@ -43,7 +42,6 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       "lobbyUpdate",
       gameState.getPlayers().map((p) => ({
         id: p.id,
-        isHost: p.isHost,
         nickname: p.nickname,
       }))
     );

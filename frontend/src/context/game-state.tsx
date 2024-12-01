@@ -5,7 +5,6 @@ import { io, Socket } from "socket.io-client";
 
 interface Player {
   id: string;
-  isHost: boolean;
   nickname: string;
 }
 
@@ -26,7 +25,7 @@ export interface Song {
 
 interface GameState {
   players: Player[];
-  isHost: boolean;
+  isAdmin: boolean;
   playerId: string | null;
   nickname: string;
   hasSubmittedDrawing: boolean;
@@ -38,6 +37,11 @@ interface GameState {
   allPlayersSubmitted: boolean;
   hasJoined: boolean;
   joinError: string | null; // Add this line
+  submittedDrawings: Array<{
+    playerId: string;
+    nickname: string;
+    imageData: string;
+  }>;
 }
 
 interface GameStateContextType {
@@ -52,9 +56,9 @@ const SocketContext = createContext<GameStateContextType | null>(null);
 
 const initialGameState: GameState = {
   players: [],
-  isHost: false,
   playerId: null,
   nickname: "",
+  isAdmin: false,
 
   isSubmittingDrawing: false,
   hasSubmittedDrawing: false,
@@ -66,6 +70,7 @@ const initialGameState: GameState = {
   song: null,
   hasJoined: false,
   joinError: null, // Add this line
+  submittedDrawings: [],
 };
 
 export const useGameState = () => {
@@ -134,6 +139,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       });
     });
 
+    newSocket.on("adminJoined", () => {
+      console.log("admin joined");
+      updateGameState({
+        isAdmin: true,
+        hasJoined: true,
+      });
+    });
+
     newSocket.on("joinRejected", (reason: string) => {
       console.log("rejected");
       updateGameState({
@@ -145,13 +158,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     });
 
     newSocket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
-      const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
       console.log("my id:", playerId);
       console.log("lobby update", updatedPlayers);
-      console.log("this player is host", currentPlayer?.isHost);
       updateGameState({
         players: updatedPlayers,
-        isHost: currentPlayer?.isHost || false,
         hasJoined: true, // Set hasJoined here on successful lobby update
       });
     });
@@ -179,6 +189,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         allPlayersSubmitted: true,
       });
     });
+
+    newSocket.on(
+      "drawingSubmitted",
+      (drawing: { playerId: string; nickname: string; imageData: string }) => {
+        console.log("drawing submitted", drawing.nickname);
+        setGameState((prev: GameState) => ({
+          ...prev,
+          submittedDrawings: [...prev.submittedDrawings, drawing],
+        }));
+      }
+    );
   };
 
   useEffect(() => {

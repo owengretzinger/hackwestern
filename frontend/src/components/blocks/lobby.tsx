@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useGameState } from "@/providers/game-state-provider";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -13,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "../ui/button";
+import { useGameState } from "@/context/game-state";
 
 const Lobby = () => {
   const { socket, gameState } = useGameState();

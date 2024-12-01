@@ -1,6 +1,5 @@
 export interface Player {
   id: string;
-  isHost: boolean;
   nickname: string;
   socketId: string;
   hasSubmitted?: boolean;
