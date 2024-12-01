@@ -9,8 +9,19 @@
         "activeTab",
         "unlimitedStorage",
         "storage",
-        "downloads"
+        "downloads",
+        "webRequest",
+        "declarativeNetRequest"
     ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "ruleset_1",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    },
     "host_permissions": ["<all_urls>"],
     "web_accessible_resources":[{
         "resources": ["/app/*", "/images/*"],

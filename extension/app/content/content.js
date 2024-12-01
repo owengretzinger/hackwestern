@@ -1,8 +1,28 @@
 console.log('controller 000')
 
 const WS_URL = 'ws://localhost:8080'
+// const WS_URL = 'ws://7b94-129-100-255-24.ngrok-free.app'
 
 const main = async () => {
+
+    const current_site = window.location.href
+
+    if( !current_site.includes('suno') ) {
+        console.log('not suno...')
+        return
+    }
+    console.log('in suno...')
+
+    // create indicator to represent connection status    
+    const updateIndicator = (state) => {
+        // if(state){
+        //     chrome.runtime.sendMessage({ action: "changeIcon", iconPath: "/images/green-square.png" });
+        // } else {
+        //     chrome.runtime.sendMessage({ action: "changeIcon", iconPath: "/images/red-square.png" });
+        // }
+    }
+
+
     const wss = new WebSocket(WS_URL)
     console.log(wss)
 
@@ -14,6 +34,7 @@ const main = async () => {
             role: 'controller'
         }))
 
+        updateIndicator(true)
     }
 
     wss.onmessage = async (message) => {
@@ -25,13 +46,65 @@ const main = async () => {
         switch(action) {
             
             case 'createSong':
-                const prompt = data.prompt
+                // const prompt = data.prompt
+                const lyrics = data.lyrics
+                const genre = data.genre
                 // press button
                 // make song public
                 // return url
-                console.log(prompt)
-                const input = document.querySelector('textarea')
-                input.value = prompt
+                console.log(genre)
+                console.log(lyrics)
+
+                if (!genre || !lyrics) return
+
+                const lyrics_input = document.querySelector('textarea[placeholder="Enter your own lyrics"]')
+                const genre_input = document.querySelector('textarea[placeholder="Enter style of music"]')
+
+                console.log(lyrics_input)
+                console.log(genre_input)
+
+                function simulateTyping(textarea, text) {
+                    let index = 0;
+                  
+                    function typeCharacter() {
+                      if (index < text.length) {
+                        const char = text[index];
+                  
+                        // Update the textarea's value as if the user is typing
+                        textarea.value += char;
+                  
+                        // Trigger input event to update the DOM (such as form validations)
+                        const inputEvent = new Event('input', { bubbles: true });
+                        textarea.dispatchEvent(inputEvent);
+                  
+                        // Move to the next character after a short delay
+                        index++;
+                        typeCharacter()
+                      }
+                    }
+                  
+                    // Start typing the string
+                    typeCharacter();
+                }
+                
+                function deleteContent(textarea) {
+                    if (textarea.value.length > 0) {
+                        // Simulate backspace by removing the last character
+                        textarea.value = textarea.value.slice(0, -1);
+                
+                        // Trigger input event after every deletion
+                        const inputEvent = new Event('input', { bubbles: true });
+                        textarea.dispatchEvent(inputEvent);
+                
+                        deleteContent(textarea); // Continue deleting until empty
+                    }
+                }
+                
+                // Example usage: simulate typing "Hello, world!" into the textarea
+                simulateTyping(lyrics_input, lyrics);
+                simulateTyping(genre_input, genre);
+
+                console.log('continuing...')
 
                 const buttons = document.querySelectorAll('button')
                 let create_btn = null
@@ -43,8 +116,11 @@ const main = async () => {
                         }
                     })
                 })
+
+                // console.log('create elem:', create_btn)
                 
                 setTimeout(() => {
+                    
                     const start_song_num = document.querySelectorAll('.react-aria-GridListItem').length
                     create_btn.click()
                     
@@ -58,6 +134,9 @@ const main = async () => {
 
                             console.log(created_song)
 
+                            deleteContent(lyrics_input)
+                            deleteContent(genre_input)
+
                             // const public_toggle = created_song.querySelector('.flex.items-center.space-x-2')
                             const public_toggle = created_song.querySelector('.relative.inline-flex.items-center.h-4.w-7.rounded-full.transition-colors')
                             console.log(public_toggle)
@@ -67,7 +146,6 @@ const main = async () => {
                             console.log(id)
                             const song_url = `https://cdn1.suno.ai/${id}.mp3`
                             console.log(song_url)
-
                             
                             setTimeout(() => {
                                 wss.send(JSON.stringify({
@@ -91,6 +169,7 @@ const main = async () => {
 
     wss.onclose = () => {
         console.log('disconnected')
+        updateIndicator(false)
     }
 
     wss.onerror = () => {

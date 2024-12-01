@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { send } = require('process');
 const WebSocket = require('ws');
+const cors = require('cors'); // Import the CORS package
 
 const app = express();
 const server = http.createServer(app);
@@ -14,6 +15,7 @@ const server_ws = new WebSocket(WS_URL)
 // Serve static files (if needed)
 app.use(express.static('public'));
 app.use(express.json());
+app.use(cors());
 
 server_ws.onopen = () => {
     console.log('Server side connect')
@@ -44,7 +46,8 @@ app.post('/createSong', async (req, res) => {
 
         server_ws.send(JSON.stringify({
             action: 'createSong',
-            prompt: data.prompt
+            lyrics: data.lyrics,
+            genre: data.genre
         }))
 
     }))
@@ -87,9 +90,8 @@ wss.on('connection', (ws) => {
     console.log(`Client id: ${ws.id} connected`);
 
     // Send a welcome message
-    ws.send('Welcome to the WebSocket server! Your id is ' + ws.id);
+    // ws.send('Welcome to the WebSocket server! Your id is ' + ws.id);
 
-    
     ws.on('message', (message) => {
         // console.log(`Received message: ${message} from client: ${ws.id}`);
         // Broadcast the message to all clients
@@ -127,6 +129,9 @@ wss.on('connection', (ws) => {
 
     ws.on('close', () => {
         console.log(`Client: ${ws.id} disconnected`);
+        if(ws.isControlled){
+            console.log('controller disconnected')
+        }
     });
 
 });
