@@ -4,8 +4,8 @@ import { Contract, Provider, constants } from 'starknet';
 const DEVNET_URL = 'http://localhost:5050';
 const provider = new Provider({ sequencer: { baseUrl: DEVNET_URL } });
 
-// We'll update this after deployment
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_NFT_CONTRACT_ADDRESS;
+// Use the deployed contract address
+const CONTRACT_ADDRESS = "0x22db8cd773815e9515b55f050cebcffb2160de3dffabfa266adb14b435e7333";
 
 const abi = [
     {
@@ -52,8 +52,9 @@ export async function mintNFT(uri: string) {
         const wallet = await window.starknet?.enable();
         if (!wallet) throw new Error('No wallet connected');
 
-        const provider = new Provider({ sequencer: { network: 'goerli-alpha' } });
-        const contract = new Contract(abi, CONTRACT_ADDRESS!, provider);
+        // Use devnet provider
+        const provider = new Provider({ sequencer: { baseUrl: DEVNET_URL } });
+        const contract = new Contract(abi, CONTRACT_ADDRESS, provider);
         
         // Connect the contract to the user's wallet
         contract.connect(wallet);
@@ -78,8 +79,9 @@ export async function mintNFT(uri: string) {
 
 export async function getSongDetails(tokenId: number) {
     try {
-        const provider = new Provider({ sequencer: { network: 'goerli-alpha' } });
-        const contract = new Contract(abi, CONTRACT_ADDRESS!, provider);
+        // Use devnet provider
+        const provider = new Provider({ sequencer: { baseUrl: DEVNET_URL } });
+        const contract = new Contract(abi, CONTRACT_ADDRESS, provider);
         
         const result = await contract.get_song_details(tokenId);
         return {

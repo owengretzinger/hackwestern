@@ -72,5 +72,3 @@ mod CollaborativeSongNFT {
         )
     }
 }
-
-const CONTRACT_ADDRESS = "0x22db8cd773815e9515b55f050cebcffb2160de3dffabfa266adb14b435e7333";
