@@ -1,4 +1,4 @@
-import Lobby from "@/components/lobby";
+import Lobby from "@/components/blocks/lobby";
 
 export default function LobbyPage() {
   return (

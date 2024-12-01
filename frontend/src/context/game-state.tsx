@@ -16,9 +16,11 @@ export interface Verse {
 }
 
 export interface Song {
+  title: string;
   cover: string;
   verses: Verse[];
   genre: string;
+  shortGenre: string;
   url: string;
 }
 
@@ -73,8 +75,6 @@ export const useGameState = () => {
   return context;
 };
 
-const playerId = Math.random().toString(36).substring(2, 7);
-
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
@@ -84,6 +84,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   };
 
   const joinGame = (nickname: string) => {
+    const playerId = Math.random().toString(36).substring(2, 7);
+    console.log("joining game with nickname", nickname);
     updateGameState({
       playerId,
       nickname,
@@ -125,6 +127,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       updateGameState({
         song: songData,
         isLoadingSong: false,
+      });
+    });
+
+    // Add a listener for the "error" event
+    newSocket.on("error", (errorMessage: string) => {
+      console.error("Server error:", errorMessage);
+      updateGameState({
+        submitError: errorMessage,
+        isSubmittingDrawing: false,
       });
     });
 
