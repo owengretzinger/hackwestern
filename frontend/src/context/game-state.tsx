@@ -93,17 +93,17 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const newSocket = io(
       // "https://hackwestern11controller-88dfdd62efd5.herokuapp.com", // Change to wss:// protocol
-      "https://b69a-129-100-255-24.ngrok-free.app/",
+      "https://9199-129-100-255-24.ngrok-free.app/",
       // "http://localhost:3001",
       {
         transports: ["websocket"], // Remove polling to prevent transport switching
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
-        timeout: 10000, // Add connection timeout
-        withCredentials: true,
-        auth: {
-          token: process.env.NEXT_PUBLIC_SOCKET_TOKEN,
-        },
+        timeout: 20000,
+        forceNew: true,
+        secure: true,
+        rejectUnauthorized: false,
+        autoConnect: true,
       }
     );
 
