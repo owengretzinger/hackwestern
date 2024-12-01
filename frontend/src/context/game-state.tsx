@@ -92,17 +92,30 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }); // removed hasJoined: true from here
 
     const newSocket = io(
-      "https://hackwestern11main-91370a9c09b3.herokuapp.com",
+      // "https://hackwestern11controller-88dfdd62efd5.herokuapp.com", // Change to wss:// protocol
+      "https://b69a-129-100-255-24.ngrok-free.app/",
+      // "http://localhost:3001",
       {
-        transports: ["websocket", "polling"],
+        transports: ["websocket"], // Remove polling to prevent transport switching
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        timeout: 10000, // Add connection timeout
         withCredentials: true,
         auth: {
           token: process.env.NEXT_PUBLIC_SOCKET_TOKEN,
         },
       }
     );
+
+    // Add reconnection handling
+    let reconnectAttempts = 0;
+    newSocket.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+      if (reconnectAttempts < 5) {
+        reconnectAttempts++;
+        setTimeout(() => newSocket.connect(), 1000);
+      }
+    });
 
     newSocket.on("connect_error", (error) => {
       console.error("Connection error:", error);

@@ -105,22 +105,21 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
         .join(", ");
 
       // Don't await so it doesn't block other things. We don't need it until later.
-      // const imageResponse = generateCoverArt(descriptions);
-      const imageResponse = Promise.resolve({
-        data: [
-          {
-            url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
-          },
-        ],
-      });
+      const imageResponse = generateCoverArt(descriptions);
+      // const imageResponse = Promise.resolve({
+      //   data: [
+      //     {
+      //       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+      //     },
+      //   ],
+      // });
 
       const { title, genre, shortGenre } = await generateTitleAndGenre(
         lyricsString
       );
 
-      const songURL =
-        "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
-      //   const songURL = await generateSong(lyricsString, genreAnalysis.genre);
+      // const songURL = "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
+      const songURL = await generateSong(lyricsString, genre);
 
       const coverImageUrl = (await imageResponse).data[0].url;
 
