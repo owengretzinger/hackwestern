@@ -127,14 +127,14 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       console.log("Lyrics:", lyricsString);
 
       console.log("Starting cover art generation...");
-      const imageResponse = generateCoverArt(descriptions);
-      // const imageResponse = Promise.resolve({
-      //   data: [
-      //     {
-      //       url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
-      //     },
-      //   ],
-      // });
+      // const imageResponse = generateCoverArt(descriptions);
+      const imageResponse = Promise.resolve({
+        data: [
+          {
+            url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+          },
+        ],
+      });
 
       console.log("Generating title and genre...");
       const { title, genre, shortGenre } = await generateTitleAndGenre(
@@ -142,8 +142,9 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       );
 
       console.log("Generating song...");
-      // const songURL = "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
-      const songURL = await generateSong(lyricsString, genre);
+      const songURL =
+        "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
+      // const songURL = await generateSong(lyricsString, genre);
 
       console.log("Song generation complete:", {
         title,

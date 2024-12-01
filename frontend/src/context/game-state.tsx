@@ -93,8 +93,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     const newSocket = io(
       // "https://hackwestern11controller-88dfdd62efd5.herokuapp.com", // Change to wss:// protocol
-      "https://9199-129-100-255-24.ngrok-free.app/",
-      // "http://localhost:3001",
+      // "https://9199-129-100-255-24.ngrok-free.app/",
+      "http://localhost:3001",
       {
         transports: ["websocket"], // Remove polling to prevent transport switching
         reconnectionAttempts: 5,
