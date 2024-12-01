@@ -14,11 +14,7 @@ export const createSocketServer = (
 ) => {
   return new Server(httpServer, {
     cors: {
-      origin: [
-        "http://localhost:3000",
-        "http://172.20.10.5:3000",
-        "https://hackwestern11main-91370a9c09b3.herokuapp.com",
-      ],
+      origin: "*",
       methods: ["GET", "POST"],
       credentials: true,
       allowedHeaders: ["Content-Type"],
