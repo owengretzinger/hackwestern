@@ -91,7 +91,27 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       nickname,
     }); // removed hasJoined: true from here
 
-    const newSocket = io("https://hackwestern11main-91370a9c09b3.herokuapp.com/");
+    const newSocket = io(
+      "https://hackwestern11main-91370a9c09b3.herokuapp.com",
+      {
+        transports: ["websocket", "polling"],
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        withCredentials: true,
+        auth: {
+          token: process.env.NEXT_PUBLIC_SOCKET_TOKEN,
+        },
+      }
+    );
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Connection error:", error);
+      updateGameState({
+        joinError: "Failed to connect to server",
+        hasJoined: false,
+      });
+    });
+
     setSocket(newSocket);
 
     newSocket.on("connect", () => {

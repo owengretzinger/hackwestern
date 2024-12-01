@@ -9,11 +9,19 @@ export const createExpressApp = () => {
   return app;
 };
 
-export const createSocketServer = (httpServer: ReturnType<typeof createServer>) => {
+export const createSocketServer = (
+  httpServer: ReturnType<typeof createServer>
+) => {
   return new Server(httpServer, {
     cors: {
-      origin: ["http://172.20.10.5:3000", "http://localhost:3000"],
+      origin: [
+        "http://localhost:3000",
+        "http://172.20.10.5:3000",
+        "https://hackwestern11main-91370a9c09b3.herokuapp.com",
+      ],
       methods: ["GET", "POST"],
+      credentials: true,
+      allowedHeaders: ["Content-Type"],
     },
   });
 };
