@@ -1,7 +1,8 @@
 console.log('controller 000')
 
-const WS_URL = 'ws://localhost:8080'
+// const WS_URL = 'ws://localhost:8080'
 // const WS_URL = 'ws://7b94-129-100-255-24.ngrok-free.app'
+const WS_URL = 'wss://hackwestern11controller-88dfdd62efd5.herokuapp.com'
 
 const main = async () => {
 

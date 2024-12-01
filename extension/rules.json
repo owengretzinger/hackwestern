@@ -1,0 +1,17 @@
+[
+    {
+      "id": 1,
+      "priority": 1,
+      "action": {
+        "type": "modifyHeaders",
+        "responseHeaders": [
+          { "header": "X-Custom-Header", "operation": "set", "value": "Intercepted" }
+        ]
+      },
+      "condition": {
+        "urlFilter": "*://*/*",
+        "resourceTypes": ["xmlhttprequest"]
+      }
+    }
+  ]
+  
