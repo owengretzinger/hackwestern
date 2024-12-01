@@ -1,22 +1,37 @@
 'use client';
 
-import { useState } from 'react';
-import { connect, disconnect } from "starknetkit";
-import type { StarknetWindowObject } from "starknetkit";
+import * as React from 'react';
+import { Button } from "@/components/ui/button";
+import { useGameState } from "@/context/game-state";
 
 export function WalletConnect() {
-  const [address, setAddress] = useState<string | undefined>();
-  const [connection, setConnection] = useState<StarknetWindowObject>();
-  const [connecting, setConnecting] = useState(false);
+  const { gameState, updateWallet } = useGameState();
+  const [connecting, setConnecting] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+
+  // Get current player's wallet address from game state
+  const currentPlayer = gameState.players.find(p => p.id === gameState.playerId);
+  const walletAddress = currentPlayer?.walletAddress;
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const connectWallet = async () => {
+    if (!gameState.playerId) return;
+    
     try {
       setConnecting(true);
+      const { connect, disconnect } = await import("starknetkit");
+      
+      // First disconnect any existing connections
+      await disconnect();
+      
+      // Then connect with a new session
       const result = await connect();
       
       if (result && result.wallet) {
-        setConnection(result.wallet);
-        setAddress(result.wallet.account.address);
+        updateWallet(result.wallet.account.address);
       }
     } catch (error) {
       console.error("Failed to connect:", error);
@@ -26,32 +41,43 @@ export function WalletConnect() {
   };
 
   const disconnectWallet = async () => {
-    await disconnect();
-    setConnection(undefined);
-    setAddress(undefined);
+    try {
+      const { disconnect } = await import("starknetkit");
+      await disconnect();
+      updateWallet(undefined);
+    } catch (error) {
+      console.error("Failed to disconnect:", error);
+    }
   };
 
-  if (address) {
+  // Don't render anything until after mounting to prevent hydration errors
+  if (!mounted) return null;
+
+  if (walletAddress) {
     return (
       <div className="flex items-center gap-2">
-        <span className="text-sm">Connected: {address.slice(0, 6)}...{address.slice(-4)}</span>
-        <button
+        <span className="text-sm text-muted-foreground">
+          {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+        </span>
+        <Button
           onClick={disconnectWallet}
-          className="px-3 py-1 text-sm text-red-600 border border-red-600 rounded-md hover:bg-red-50"
+          variant="outline"
+          className="text-destructive border-destructive hover:bg-destructive/10"
         >
           Disconnect
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <button
+    <Button
       onClick={connectWallet}
-      disabled={connecting}
-      className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+      disabled={connecting || !gameState.playerId}
+      variant="outline"
+      className="w-full"
     >
       {connecting ? 'Connecting...' : 'Connect Wallet'}
-    </button>
+    </Button>
   );
 }

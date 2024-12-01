@@ -7,6 +7,7 @@ interface Player {
   id: string;
   isHost: boolean;
   nickname: string;
+  walletAddress?: string;
 }
 
 export interface Verse {
@@ -35,7 +36,7 @@ interface GameState {
   isLoadingSong: boolean;
   allPlayersSubmitted: boolean;
   hasJoined: boolean;
-  joinError: string | null; // Add this line
+  joinError: string | null;
 }
 
 interface GameStateContextType {
@@ -44,6 +45,7 @@ interface GameStateContextType {
   setGameState: React.Dispatch<React.SetStateAction<GameState>>;
   updateGameState: (updates: Partial<GameState>) => void;
   joinGame: (nickname: string) => void;
+  updateWallet: (address: string | undefined) => void;
 }
 
 const SocketContext = createContext<GameStateContextType | null>(null);
@@ -53,17 +55,15 @@ const initialGameState: GameState = {
   isHost: false,
   playerId: null,
   nickname: "",
-
   isSubmittingDrawing: false,
   hasSubmittedDrawing: false,
   waitingForOthersToSubmit: false,
   allPlayersSubmitted: false,
   submitError: null,
-
   isLoadingSong: true,
   song: null,
   hasJoined: false,
-  joinError: null, // Add this line
+  joinError: null,
 };
 
 export const useGameState = () => {
@@ -81,12 +81,28 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     setGameState((prev) => ({ ...prev, ...updates }));
   };
 
+  const updateWallet = (address: string | undefined) => {
+    if (!socket || !gameState.playerId) return;
+    
+    // Find current player's wallet address
+    const currentPlayer = gameState.players.find(p => p.id === gameState.playerId);
+    const currentWalletAddress = currentPlayer?.walletAddress;
+    
+    // Only emit if the wallet address has actually changed
+    if (currentWalletAddress !== address) {
+      socket.emit("walletUpdate", {
+        playerId: gameState.playerId,
+        walletAddress: address,
+      });
+    }
+  };
+
   const joinGame = (nickname: string) => {
     const playerId = Math.random().toString(36).substring(2, 7);
     updateGameState({
       playerId,
       nickname,
-    }); // removed hasJoined: true from here
+    });
 
     const newSocket = io("http://localhost:3001");
     setSocket(newSocket);
@@ -110,13 +126,10 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
 
     newSocket.on("lobbyUpdate", (updatedPlayers: Player[]) => {
       const currentPlayer = updatedPlayers.find((p) => p.id === playerId);
-      console.log("my id:", playerId);
-      console.log("lobby update", updatedPlayers);
-      console.log("this player is host", currentPlayer?.isHost);
       updateGameState({
         players: updatedPlayers,
         isHost: currentPlayer?.isHost || false,
-        hasJoined: true, // Set hasJoined here on successful lobby update
+        hasJoined: true,
       });
     });
 
@@ -150,6 +163,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         setGameState,
         updateGameState,
         joinGame,
+        updateWallet,
       }}
     >
       {children}

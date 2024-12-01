@@ -1,28 +1,24 @@
 "use client";
 
-import { useEffect } from "react";
 import { useGameState } from "@/context/game-state";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { WalletConnect } from "@/components/WalletConnect";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter,
-  CardDescription,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Button } from "../ui/button";
+import { CheckCircle2 } from "lucide-react";
 
 const Lobby = () => {
-  const { socket, gameState } = useGameState();
   const router = useRouter();
+  const { gameState, socket } = useGameState();
 
   useEffect(() => {
-    if (!gameState.hasJoined || !gameState.playerId || !socket) {
-      router.push("/");
-      return;
-    }
+    if (!gameState.hasJoined || !gameState.playerId || !socket) return;
 
     socket.emit("joinLobby", {
       playerId: gameState.playerId,
@@ -36,83 +32,55 @@ const Lobby = () => {
     return () => {
       socket.off("gameStarted");
     };
-  }, [
-    gameState.hasJoined,
-    gameState.playerId,
-    gameState.nickname,
-    router,
-    socket,
-  ]);
+  }, [gameState.hasJoined, gameState.playerId, gameState.nickname, router, socket]);
 
   return (
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Lobby</CardTitle>
-          <CardDescription>
-            {gameState.isHost
-              ? "Start once you're ready!"
-              : "Waiting for the host to start the game..."}
-          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid w-full items-center gap-6">
-            <div className="flex flex-col space-y-1.5">
-              <Label>Your Details</Label>
-              <div className="p-3 bg-muted rounded-lg space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  ID: {gameState.playerId || "Loading..."}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Nickname: {gameState.nickname}
-                </p>
-                {gameState.isHost && (
-                  <p className="text-sm text-green-600 dark:text-green-400 font-semibold">
-                    You are the host
-                  </p>
-                )}
+        <CardContent className="space-y-6">
+          {/* Players List */}
+          <div className="space-y-2">
+            {gameState.players.map((player) => (
+              <div
+                key={player.id}
+                className="flex items-center justify-between py-2"
+              >
+                <div className="flex items-center gap-2">
+                  <span>{player.nickname}</span>
+                  {player.isHost && (
+                    <span className="text-green-600 text-sm">Host</span>
+                  )}
+                  {player.walletAddress && (
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                  )}
+                </div>
+                {player.id === gameState.playerId && <WalletConnect />}
               </div>
-            </div>
-
-            <div className="flex flex-col space-y-1.5">
-              <Label>Players in Lobby</Label>
-              <div className="space-y-2">
-                {gameState.players.map((player) => (
-                  <div
-                    key={player.id}
-                    className="p-3 bg-muted rounded-lg flex justify-between items-center"
-                  >
-                    <span className="text-sm">
-                      {player.nickname || player.id}
-                    </span>
-                    {player.isHost && (
-                      <span className="text-sm text-green-600 dark:text-green-400 font-semibold">
-                        Host
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
+            ))}
           </div>
-        </CardContent>
 
-        {gameState.isHost && (
-          <CardFooter className="flex flex-col gap-2">
-            <Button
-              onClick={() => socket?.emit("startGame")}
-              className="w-full"
-              disabled={gameState.players.length < 2}
-            >
-              Start Game
-            </Button>
-            {gameState.players.length < 2 && (
-              <p className="text-sm text-muted-foreground">
-                Waiting for at least 1 more player
-              </p>
-            )}
-          </CardFooter>
-        )}
+          {/* Start Game Button */}
+          {gameState.isHost && (
+            <div className="space-y-2">
+              <Button
+                onClick={() => socket?.emit("startGame")}
+                className="w-full"
+                disabled={gameState.players.length < 2}
+                variant="default"
+              >
+                Start Game
+              </Button>
+              {gameState.players.length < 2 && (
+                <p className="text-sm text-center text-muted-foreground">
+                  Waiting for at least 1 more player
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
       </Card>
     </div>
   );

@@ -10,9 +10,51 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
+import { Button } from "../ui/button";
+import { uploadToIPFS } from "@/lib/web3-storage";
+import { deployCollaborativeSongNFT } from "@/lib/deploy-contract";
+import { mintNFT } from "@/lib/contract";
+import React from "react";
 
 export default function Results() {
   const { gameState } = useGameState();
+  const [minting, setMinting] = React.useState(false);
+  const [tokenId, setTokenId] = React.useState<number>();
+
+  const handleMintNFT = async () => {
+    if (!gameState.song) return;
+
+    try {
+      setMinting(true);
+      
+      // Upload to IPFS
+      const { metadataIpfsHash } = await uploadToIPFS(
+        gameState.song.url,
+        {
+          name: "Collaborative Song",
+          description: "A song created from collaborative drawings",
+          image: gameState.song.cover,
+          animation_url: gameState.song.url,
+          attributes: {
+            genre: gameState.song.genre,
+            verses: gameState.song.verses
+          }
+        }
+      );
+      
+      // Mint NFT with the IPFS metadata URI
+      const result = await mintNFT(metadataIpfsHash);
+      if (result.success) {
+        setTokenId(result.tokenId);
+        // TODO: Show success message
+      }
+    } catch (error) {
+      console.error('Error minting NFT:', error);
+      // TODO: Show error message
+    } finally {
+      setMinting(false);
+    }
+  };
 
   if (gameState.isLoadingSong) {
     return (
@@ -51,16 +93,25 @@ export default function Results() {
   }
 
   return (
-    <div className="p-4 sm:p-8">
-      <div className="max-w-4xl my-20 mx-auto flex flex-col gap-12">
-        <SongCard song={gameState.song} />
-        <div className="flex flex-col gap-12 items-center sm:items-start">
-          {gameState.song.verses.map((verse, index) => (
-            <VerseDisplay key={index} index={index} verse={verse} />
-          ))}
+    <>
+      <div className="p-4 sm:p-8">
+        <div className="max-w-4xl my-20 mx-auto flex flex-col gap-12">
+          <SongCard song={gameState.song} />
+          <div className="flex flex-col gap-12 items-center sm:items-start">
+            {gameState.song.verses.map((verse, index) => (
+              <VerseDisplay key={index} index={index} verse={verse} />
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+      <Button
+        onClick={handleMintNFT}
+        disabled={minting}
+        className="fixed bottom-4 right-4 shadow-lg"
+      >
+        {minting ? 'Minting...' : tokenId ? `Minted #${tokenId}` : 'Mint as NFT'}
+      </Button>
+    </>
   );
 }
 

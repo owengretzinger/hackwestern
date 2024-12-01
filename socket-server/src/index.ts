@@ -66,6 +66,7 @@ interface Player {
   nickname: string;
   socketId: string;
   hasSubmitted?: boolean;
+  walletAddress?: string;
 }
 
 // Add new interface for drawing submissions
@@ -133,6 +134,7 @@ io.on("connection", (socket) => {
         id: p.id,
         isHost: p.isHost,
         nickname: p.nickname,
+        walletAddress: p.walletAddress,
       }))
     );
 
@@ -372,6 +374,24 @@ io.on("connection", (socket) => {
       players.map((p) => ({ id: p.id, nickname: p.nickname }))
     );
     console.log("Client disconnected:", socket.id);
+  });
+
+  socket.on("walletUpdate", ({ playerId, walletAddress }) => {
+    console.log(`Wallet update for player ${playerId}:`, walletAddress);
+    
+    // Find and update the player's wallet address
+    const player = players.find(p => p.id === playerId);
+    if (player) {
+      player.walletAddress = walletAddress;
+      
+      // Broadcast updated player list to all clients
+      io.emit("lobbyUpdate", players.map(p => ({
+        id: p.id,
+        isHost: p.isHost,
+        nickname: p.nickname,
+        walletAddress: p.walletAddress
+      })));
+    }
   });
 });
 
