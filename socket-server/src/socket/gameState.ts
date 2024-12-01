@@ -82,6 +82,15 @@ export class GameState {
     return this.players.every((p) => p.hasSubmitted);
   }
 
+  getUnsubmittedPlayers(): Player[] {
+    const submittedPlayerIds = this.drawingSubmissions.map(
+      (submission) => submission.playerId
+    );
+    return this.players.filter(
+      (player) => !submittedPlayerIds.includes(player.id)
+    );
+  }
+
   startGame(): void {
     this.gameInProgress = true;
     this.players.forEach((p) => (p.hasSubmitted = false));
@@ -98,9 +107,7 @@ export class GameState {
   }
 
   removeAllPlayers(): void {
-    this.players = this.players.filter(player => 
-      player.socketId === this.adminSocketId
-    );
+    this.players = [];
     this.gameInProgress = false;
     this.drawingSubmissions = [];
   }

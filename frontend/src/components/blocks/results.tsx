@@ -17,7 +17,7 @@ import { Slider } from "../ui/slider";
 export default function Results() {
   const { gameState } = useGameState();
 
-  if (gameState.isLoadingSong && !gameState.submitError) {
+  if (!gameState.song && !gameState.submitError) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-2  ">
         <div className="flex gap-2">
@@ -40,7 +40,7 @@ export default function Results() {
     );
   }
 
-  if (gameState.submitError || !gameState.song) {
+  if (!gameState.song || gameState.submitError) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex items-center gap-2 text-destructive">

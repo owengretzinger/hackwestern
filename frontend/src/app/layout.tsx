@@ -5,6 +5,7 @@ import "./globals.css";
 import { SocketProvider } from "@/context/game-state";
 import { QueryProvider } from "@/providers/query-provider";
 import { ModeToggle } from "@/components/ui/theme-toggle";
+import { AdminMenu } from "@/components/admin-menu";
 
 export const metadata: Metadata = {
   title: "Symphony Canvas",
@@ -28,7 +29,8 @@ export default function RootLayout({
           <QueryProvider>
             <SocketProvider>
               {children}
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-4 right-4 flex gap-4">
+                <AdminMenu />
                 <ModeToggle />
               </div>
             </SocketProvider>

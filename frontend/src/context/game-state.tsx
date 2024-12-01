@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { io, Socket } from "socket.io-client";
+import { useRouter } from "next/navigation"; // Add this import
 
 interface Player {
   id: string;
@@ -33,7 +34,6 @@ interface GameState {
   isSubmittingDrawing: boolean;
   submitError: string | null;
   song: Song | null;
-  isLoadingSong: boolean;
   allPlayersSubmitted: boolean;
   hasJoined: boolean;
   joinError: string | null; // Add this line
@@ -66,7 +66,6 @@ const initialGameState: GameState = {
   allPlayersSubmitted: false,
   submitError: null,
 
-  isLoadingSong: true,
   song: null,
   hasJoined: false,
   joinError: null, // Add this line
@@ -83,6 +82,7 @@ export const useGameState = () => {
 export function SocketProvider({ children }: { children: React.ReactNode }) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [gameState, setGameState] = useState<GameState>(initialGameState);
+  const router = useRouter(); // Add this
 
   const updateGameState = (updates: Partial<GameState>) => {
     setGameState((prev) => ({ ...prev, ...updates }));
@@ -113,14 +113,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     );
 
     // Add reconnection handling
-    let reconnectAttempts = 0;
-    newSocket.on("disconnect", (reason) => {
-      console.log("Socket disconnected:", reason);
-      if (reconnectAttempts < 5) {
-        reconnectAttempts++;
-        setTimeout(() => newSocket.connect(), 1000);
-      }
-    });
+    // let reconnectAttempts = 0;
+    // newSocket.on("disconnect", (reason) => {
+    //   console.log("Socket disconnected:", reason);
+    //   if (reconnectAttempts < 5) {
+    //     reconnectAttempts++;
+    //     setTimeout(() => newSocket.connect(), 1000);
+    //   }
+    // });
 
     newSocket.on("connect_error", (error) => {
       console.error("Connection error:", error);
@@ -137,13 +137,24 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
         playerId,
         nickname,
       });
+      updateGameState({
+        hasJoined: true,
+      });
+    });
+
+    newSocket.on("kicked", () => {
+      console.log("kicked from game");
+      setGameState(initialGameState);
+      newSocket.disconnect();
+      setSocket(null);
+      updateGameState({ joinError: "You were kicked" });
+      router.push("/"); // Add this line
     });
 
     newSocket.on("adminJoined", () => {
       console.log("admin joined");
       updateGameState({
         isAdmin: true,
-        hasJoined: true,
       });
     });
 
@@ -162,14 +173,12 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.log("lobby update", updatedPlayers);
       updateGameState({
         players: updatedPlayers,
-        hasJoined: true, // Set hasJoined here on successful lobby update
       });
     });
 
     newSocket.on("displaySong", (songData: Song) => {
       updateGameState({
         song: songData,
-        isLoadingSong: false,
       });
     });
 

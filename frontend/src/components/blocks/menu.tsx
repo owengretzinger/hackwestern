@@ -35,6 +35,8 @@ const Menu = () => {
   const router = useRouter();
   const { gameState, joinGame } = useGameState();
 
+  console.log(gameState)
+
   useEffect(() => {
     if (gameState.hasJoined) {
       router.push("/lobby");

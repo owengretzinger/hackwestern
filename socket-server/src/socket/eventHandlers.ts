@@ -106,104 +106,107 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
       gameState.setPlayerSubmitted(socket.id);
       socket.emit("drawingProcessed");
 
-      if (!gameState.getPlayers().every((p) => p.hasSubmitted)) {
+      if (gameState.getPlayers().every((p) => p.hasSubmitted)) {
+        handleAllDrawingsSubmitted(socket);
+      } else {
         console.log(
           `Waiting for ${
             gameState.getPlayers().filter((p) => !p.hasSubmitted).length
           } more submissions`
         );
-        return;
-      }
-
-      console.log("All drawings submitted, starting AI generation...");
-      io.emit("allDrawingsSubmitted");
-
-      // Process drawings
-      console.log("Generating descriptions and lyrics...");
-      await Promise.all(
-        gameState.getDrawingSubmissions().map(async (submission) => {
-          const analysis = await generateDescriptionsAndLyrics(submission);
-          submission.lyrics = analysis.lyrics;
-          submission.description = analysis.description;
-        })
-      );
-
-      const lyricsString = gameState
-        .getDrawingSubmissions()
-        .map((submission) => submission.lyrics?.join("\n"))
-        .join("\n\n");
-
-      const descriptions = gameState
-        .getDrawingSubmissions()
-        .map((submission) => submission.description)
-        .join(", ");
-
-      console.log("Descriptions:", descriptions);
-      console.log("Lyrics:", lyricsString);
-
-      console.log("Starting cover art generation...");
-      // const imageResponse = generateCoverArt(descriptions);
-      const imageResponse = Promise.resolve({
-        data: [
-          {
-            url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
-          },
-        ],
-      });
-
-      console.log("Generating title and genre...");
-      const { title, genre, shortGenre } = await generateTitleAndGenre(
-        lyricsString
-      );
-
-      console.log("Generating song...");
-      const songURL =
-        "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
-      // const songURL = await generateSong(lyricsString, genre);
-
-      console.log("Song generation complete:", {
-        title,
-        genre,
-        shortGenre,
-        songURL,
-      });
-
-      const coverImageUrl = (await imageResponse).data[0].url;
-
-      try {
-        const songData = SongSchema.parse({
-          cover: coverImageUrl,
-          verses: gameState.getDrawingSubmissions().map((submission) => ({
-            author: submission.nickname,
-            lyrics: submission.lyrics?.join("\n") || "",
-            image: submission.imageData,
-          })),
-          genre,
-          shortGenre,
-          title,
-          url: songURL,
-        });
-
-        // console log song data other than image data
-        const songDataNoImage = {
-          ...songData,
-          cover: "image data",
-          verses: songData.verses.map((verse) => ({
-            ...verse,
-            image: "image data",
-          })),
-        };
-        console.log("Song data:", songDataNoImage);
-
-        io.emit("displaySong", songData);
-      } catch (error) {
-        console.error("Error validating song data:", error);
-        socket.emit("error", "Failed to validate song data");
       }
     } catch (error) {
       console.error("Error processing drawing:", error);
       console.error("Stack trace:", error instanceof Error ? error.stack : "");
       socket.emit("error", "Failed to process drawing");
+    }
+  };
+
+  const handleAllDrawingsSubmitted = async (socket: Socket) => {
+    console.log("All drawings submitted, starting AI generation...");
+    io.emit("allDrawingsSubmitted");
+
+    // Process drawings
+    console.log("Generating descriptions and lyrics...");
+    await Promise.all(
+      gameState.getDrawingSubmissions().map(async (submission) => {
+        const analysis = await generateDescriptionsAndLyrics(submission);
+        submission.lyrics = analysis.lyrics;
+        submission.description = analysis.description;
+      })
+    );
+
+    const lyricsString = gameState
+      .getDrawingSubmissions()
+      .map((submission) => submission.lyrics?.join("\n"))
+      .join("\n\n");
+
+    const descriptions = gameState
+      .getDrawingSubmissions()
+      .map((submission) => submission.description)
+      .join(", ");
+
+    console.log("Descriptions:", descriptions);
+    console.log("Lyrics:", lyricsString);
+
+    console.log("Starting cover art generation...");
+    // const imageResponse = generateCoverArt(descriptions);
+    const imageResponse = Promise.resolve({
+      data: [
+        {
+          url: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQE-evVoCbHwvc7LgNjNqqqmlV4jkgX6lKW8Q&s",
+        },
+      ],
+    });
+
+    console.log("Generating title and genre...");
+    const { title, genre, shortGenre } = await generateTitleAndGenre(
+      lyricsString
+    );
+
+    console.log("Generating song...");
+    const songURL =
+      "https://cdn1.suno.ai/7e87ed30-23b9-404d-aa30-75881cd57c04.mp3";
+    // const songURL = await generateSong(lyricsString, genre);
+
+    console.log("Song generation complete:", {
+      title,
+      genre,
+      shortGenre,
+      songURL,
+    });
+
+    const coverImageUrl = (await imageResponse).data[0].url;
+
+    try {
+      const songData = SongSchema.parse({
+        cover: coverImageUrl,
+        verses: gameState.getDrawingSubmissions().map((submission) => ({
+          author: submission.nickname,
+          lyrics: submission.lyrics?.join("\n") || "",
+          image: submission.imageData,
+        })),
+        genre,
+        shortGenre,
+        title,
+        url: songURL,
+      });
+
+      // console log song data other than image data
+      const songDataNoImage = {
+        ...songData,
+        cover: "image data",
+        verses: songData.verses.map((verse) => ({
+          ...verse,
+          image: "image data",
+        })),
+      };
+      console.log("Song data:", songDataNoImage);
+
+      io.emit("displaySong", songData);
+    } catch (error) {
+      console.error("Error validating song data:", error);
+      socket.emit("error", "Failed to validate song data");
     }
   };
 
@@ -223,6 +226,25 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     }
   };
 
+  const handleForceSubmit = (socket: Socket) => {
+    console.log("force submitting");
+    if (gameState.isAdmin(socket.id)) {
+      const unsubmittedPlayers = gameState.getUnsubmittedPlayers();
+      console.log("unsubmitted players", unsubmittedPlayers);
+      unsubmittedPlayers.forEach((player) => {
+        io.to(player.socketId).emit("kicked");
+        gameState.removePlayer(player.socketId);
+      });
+
+      io.emit("lobbyUpdate", gameState.getPlayers());
+
+      console.log("checking if all drawings submitted");
+      if (gameState.getDrawingSubmissions().length > 0) {
+        handleAllDrawingsSubmitted(socket);
+      }
+    }
+  };
+
   return {
     handleJoinLobby,
     handleDrawingSubmitted,
@@ -230,5 +252,6 @@ export const createEventHandlers = (io: Server, gameState: GameState) => {
     handleDisconnect,
     handleSubmitDrawing,
     handleKickEveryone,
+    handleForceSubmit,
   };
 };
