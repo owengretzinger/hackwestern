@@ -8,7 +8,7 @@ import { ModeToggle } from "@/components/ui/theme-toggle";
 import { AdminMenu } from "@/components/admin-menu";
 
 export const metadata: Metadata = {
-  title: "Symphony Canvas",
+  title: "Symphony",
   description: "Grab some friends and bring your drawings to life as a song!",
 };
 

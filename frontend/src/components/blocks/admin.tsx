@@ -19,7 +19,7 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen w-full flex justify-center items-center p-16">
-      <div className="grid grid-cols-1 min-[860px]:grid-cols-2 min-[1200px]:grid-cols-3 gap-4 w-full max-w-6xl">
+      <div className="flex flex-wrap w-full gap-10 justify-center">
         {gameState.players.map((player) => {
           const drawing = gameState.drawings.find(
             (d) => d.playerId === player.id
@@ -27,7 +27,7 @@ const Admin = () => {
           const hasSubmitted = drawing?.submitted;
           return (
             <div
-              className="w-full h-full flex justify-center items-center"
+              className="w-fit h-full flex justify-center items-center"
               key={player.id}
             >
               <Card

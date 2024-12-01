@@ -63,23 +63,6 @@ const Lobby = () => {
         <CardContent>
           <div className="grid w-full items-center gap-6">
             <div className="flex flex-col space-y-1.5">
-              <Label>Your Details</Label>
-              <div className="p-3 bg-muted rounded-lg space-y-1">
-                <p className="text-sm text-muted-foreground">
-                  ID: {gameState.playerId || "Loading..."}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Nickname: {gameState.nickname}
-                </p>
-                {gameState.isAdmin && (
-                  <p className="text-sm text-green-600 dark:text-green-400 font-semibold">
-                    You are the admin
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col space-y-1.5">
               <Label>Players in Lobby</Label>
               <div className="space-y-2">
                 {gameState.players.map((player) => (

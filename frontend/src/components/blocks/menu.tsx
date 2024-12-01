@@ -35,7 +35,7 @@ const Menu = () => {
   const router = useRouter();
   const { gameState, joinGame } = useGameState();
 
-  console.log(gameState)
+  console.log(gameState);
 
   useEffect(() => {
     if (gameState.hasJoined) {
@@ -59,7 +59,7 @@ const Menu = () => {
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle>Welcome to Symphony Canvas</CardTitle>
+          <CardTitle>Welcome to Symphony</CardTitle>
           <CardDescription>
             Enter your nickname to join the lobby
           </CardDescription>

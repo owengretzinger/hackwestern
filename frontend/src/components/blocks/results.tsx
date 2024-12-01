@@ -33,7 +33,7 @@ export default function Results() {
         </div>
         <p className="font-semibold leading-none tracking-tight">
           {gameState.allPlayersSubmitted
-            ? "Processing your masterpiece"
+            ? "Creating a masterpiece"
             : "Waiting for others to finish drawing"}
         </p>
       </div>
@@ -56,7 +56,9 @@ export default function Results() {
   return (
     <div className="p-6 sm:p-8">
       <div className="max-w-sm sm:max-w-xl my-20 mx-auto flex flex-col gap-12 md:max-w-none md:flex-row-reverse">
-        <SongCard song={gameState.song} />
+        <div className="lg:sticky lg:top-20 lg:h-fit">
+          <SongCard song={gameState.song} />
+        </div>
         <div className="flex justify-center w-full lg:justify-center">
           <div className="flex flex-col gap-12 items-center sm:items-start w-full lg:w-fit">
             {gameState.song.verses.map((verse, index) => (
