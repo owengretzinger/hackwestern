@@ -99,35 +99,40 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     }); // removed hasJoined: true from here
 
     const newSocket = io(
-      // "https://hackwestern11controller-88dfdd62efd5.herokuapp.com", // Change to wss:// protocol
-      // "https://9199-129-100-255-24.ngrok-free.app/",
       process.env.NEXT_PUBLIC_SOCKET_SERVER_URL,
       {
-        transports: ["websocket"], // Remove polling to prevent transport switching
+        transports: ['websocket', 'polling'],
+        reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
         timeout: 20000,
-        forceNew: true,
-        secure: true,
-        rejectUnauthorized: false,
         autoConnect: true,
       }
     );
 
-    // Add reconnection handling
-    // let reconnectAttempts = 0;
-    // newSocket.on("disconnect", (reason) => {
-    //   console.log("Socket disconnected:", reason);
-    //   if (reconnectAttempts < 5) {
-    //     reconnectAttempts++;
-    //     setTimeout(() => newSocket.connect(), 1000);
-    //   }
-    // });
-
     newSocket.on("connect_error", (error) => {
       console.error("Connection error:", error);
       updateGameState({
-        joinError: "Failed to connect to server",
+        joinError: "Failed to connect to server. Retrying...",
+        hasJoined: false,
+      });
+    });
+
+    newSocket.on("reconnect", (attemptNumber) => {
+      console.log("Reconnected on attempt", attemptNumber);
+      if (gameState.nickname && gameState.playerId) {
+        newSocket.emit("joinLobby", {
+          playerId: gameState.playerId,
+          nickname: gameState.nickname,
+        });
+      }
+    });
+
+    newSocket.on("reconnect_error", (error) => {
+      console.error("Reconnection error:", error);
+      updateGameState({
+        joinError: "Failed to reconnect to server",
         hasJoined: false,
       });
     });
