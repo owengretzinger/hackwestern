@@ -44,13 +44,13 @@ Whiteboard:
   - Chrome Extension (JavaScript)
   - WebRTC
 
-## Architecture
+## Structure
 
 The project consists of three main components:
 
 1. **Frontend** (`/frontend`): Next.js web application
-2. **Socket Server** (`/socket-server`): Game logic and AI integration
-3. **Extension** (`/extension`): Chrome extension for Suno integration
+2. **Socket Server** (`/server`): Game logic and AI integration
+3. **Song Generation API** (`/song-generation-api`): Chrome extension and server for Suno integration
 
 ## Getting Started
 
@@ -63,15 +63,15 @@ The project consists of three main components:
 cd frontend
 pnpm install
 
-# Install socket-server dependencies
-cd ../socket-server
+# Install server dependencies
+cd ../server
 pnpm install
 ```
 
 3. Set up environment variables:
 
 ```bash
-# In socket-server/.env
+# In server/.env
 OPENAI_API_KEY=your_api_key
 SONG_API=your_song_api_url
 ```
@@ -83,10 +83,12 @@ SONG_API=your_song_api_url
 cd frontend
 pnpm dev
 
-# Run socket server
-cd socket-server
+# Run server
+cd server
 pnpm dev
 ```
+
+5. Either mock the song link instead of calling the song generation API, or set up the song generation API server + Chrome extension
 
 ## Game Flow
 
