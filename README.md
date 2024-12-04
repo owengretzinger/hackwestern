@@ -1,28 +1,39 @@
 # Symphony
 
-[![Symphony Demo](https://img.youtube.com/vi/SG54dt-6A14/0.jpg)](https://youtu.be/SG54dt-6A14)
+Real-time multiplayer web app where you create drawings that get transformed into music. Built for HackWestern 11.
 
-Real-time multiplayer web application where players create drawings that get transformed into an AI-generated song. Built for HackWestern 11.
+## Demo
+
+https://github.com/user-attachments/assets/19c79cdc-0c84-4a63-b796-d89baff4029e
 
 ## Screenshots
 
-Final results:
-![image](https://github.com/user-attachments/assets/5fa060df-bac7-45b8-a42e-75451509b61b)
+Final result example:
+![Final result example](https://github.com/user-attachments/assets/5fa060df-bac7-45b8-a42e-75451509b61b)
 
-Admin panel that shows everyone's drawings live:
-![image](https://github.com/user-attachments/assets/77d3ab4d-6caf-44bc-a244-9bab5dcfc181)
+Host panel that shows everyone's drawings live:
+![Host panel example](https://github.com/user-attachments/assets/77d3ab4d-6caf-44bc-a244-9bab5dcfc181)
 
-Whiteboard:
-![image](https://github.com/user-attachments/assets/5ecf03fa-00cf-4a09-b5d1-00422edc8732)
+Whiteboard example:
+![Whiteboard example](https://github.com/user-attachments/assets/5ecf03fa-00cf-4a09-b5d1-00422edc8732)
 
 ## Features
 
-- **Real-time Collaboration:** Players from different locations can play together simultaneously.
+- **Real-time Collaboration:** Players from different locations can play together simultaneously
 - **Drawing**: Collaborative drawing interface with multiple colors and eraser tools
 - **AI Integration**: Converts player drawings into song lyrics and music using AI
 - **Host Controls**: Special host interface to manage the game flow and view player drawings as they draw in real-time
-- **Beautiful UI:** Intuitive interface, repsonsive design for mobile, minimalistic UI, light & dark mode.
-- **Take it Home:** After playing, you can download the song, the album cover, and all the drawings.
+- **Beautiful UI:** Intuitive interface, repsonsive design for mobile, minimalistic UI, light & dark mode
+- **Take it Home:** After playing, you can download the song, the album cover, and all the drawings
+
+## Architecture
+
+![Architecture Diagram](https://github.com/user-attachments/assets/546f554e-483a-4c1f-b14e-382673fc4383)
+
+1. **Next.js Client** (`/frontend`): Web application that players use to draw and listen to the generated music
+2. **Express Websocket Server** (`/server`): Node.js server that handles game logic, AI integration, and real-time communication between players
+3. **Express Server** (`/song-generation-api/server`): Server that hosts the Chrome extension for Suno integration
+4. **Chrome Extension** (`/song-generation-api/extension`): Chrome extension that interacts with Suno to generate songs from lyrics (there's no official Suno API, and unofficial APIs did not work)
 
 ## Tech Stack
 
@@ -44,13 +55,13 @@ Whiteboard:
   - Chrome Extension (JavaScript)
   - WebRTC
 
-## Structure
+## Future Improvements
 
-The project consists of three main components:
-
-1. **Frontend** (`/frontend`): Next.js web application
-2. **Socket Server** (`/server`): Game logic and AI integration
-3. **Song Generation API** (`/song-generation-api`): Chrome extension and server for Suno integration
+- **Database Integration**: Store game data, drawings, and songs in a database
+- **User Accounts**: Allow users to create accounts and revisit songs they've created
+- **Robustness**: Improve error handling and edge case handling
+- **Suno Integration**: Ideally Suno releases an official API, otherwise host the Chrome extension using a headless browser (currently uses ngrok to expose localhost as a public URL)
+- **Custom Music Settings**: Allow users to vote on the genre
 
 ## Getting Started
 
@@ -59,32 +70,31 @@ The project consists of three main components:
 2. Install dependencies:
 
 ```bash
-# Install frontend dependencies
-cd frontend
+# In frontend
 pnpm install
 
-# Install server dependencies
-cd ../server
+# In server
 pnpm install
 ```
 
 3. Set up environment variables:
 
 ```bash
+# In frontend/.env
+NEXT_PUBLIC_SOCKET_SERVER_URL=
+
 # In server/.env
-OPENAI_API_KEY=your_api_key
-SONG_API=your_song_api_url
+OPENAI_API_KEY=
+SONG_API=
 ```
 
 4. Run the development servers:
 
 ```bash
-# Run frontend
-cd frontend
+# In frontend
 pnpm dev
 
-# Run server
-cd server
+# In server
 pnpm dev
 ```
 
